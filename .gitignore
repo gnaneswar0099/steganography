@@ -1,2 +1,19 @@
 .env
 vendor/
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE Files
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Runtime/Cache directories
+/uploads/*
+/tmp/*
+/cache/*
