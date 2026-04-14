@@ -24,10 +24,10 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
 */
 $_env = file_exists(__DIR__ . '/.env') ? (parse_ini_file(__DIR__ . '/.env') ?: []) : [];
 
-$db_host    = "localhost";
-$db_port    = "3306";                 // Explicit port (important for MySQL80 service)
-$db_name    = "steganography";
-$db_user    = "steg_user";
+$db_host    = $_env['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
+$db_port    = $_env['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
+$db_name    = $_env['DB_NAME'] ?? getenv('DB_NAME') ?: 'steganography';
+$db_user    = $_env['DB_USER'] ?? getenv('DB_USER') ?: 'steg_user';
 $db_pass    = $_env['DB_PASS'] ?? getenv('DB_PASS') ?: '';
 $db_charset = "utf8mb4";
 
