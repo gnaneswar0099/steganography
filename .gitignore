@@ -1,5 +1,2 @@
 .env
 vendor/
-composer.phar
-*.log
-*.tmp
