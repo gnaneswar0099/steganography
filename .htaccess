@@ -1,0 +1,29 @@
+Options -Indexes
+
+# Custom error pages
+ErrorDocument 400 /steganography/error.php?code=400
+ErrorDocument 403 /steganography/error.php?code=403
+ErrorDocument 404 /steganography/error.php?code=404
+ErrorDocument 405 /steganography/error.php?code=405
+ErrorDocument 500 /steganography/error.php?code=500
+ErrorDocument 503 /steganography/error.php?code=503
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    # X-XSS-Protection removed: deprecated and removed from Chromium in 2019.
+    # Modern browsers rely on Content-Security-Policy instead.
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Global Content-Security-Policy (covers pages that don't set their own per-request):
+    # Auth pages (login, register, request_reset, verify_reset) set a stricter CSP in PHP
+    # and will override this header for their responses.
+    Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none';"
+</IfModule>
+
+# Block access to sensitive files
+<FilesMatch "^(db\.php|crypto\.php|lsb\.php|prng\.php|payload\.php|auth_check\.php|nav\.php|\.env|composer\.json|composer\.lock|requirements\.txt)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

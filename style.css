@@ -1,0 +1,929 @@
+/* MAIN STYLESHEET — home.php, login.php, register.php */
+
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 80%;
+  /* Shrink all REM based units */
+}
+
+body {
+  font-family: 'Courier New', monospace;
+  background: #0a0e27;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: #fff;
+  position: relative;
+  zoom: 0.8;
+  /* Compact scale to match intended design */
+}
+
+/* GRID BACKGROUND */
+.grid-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  perspective: 1000px;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.grid-line {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  opacity: 0.3;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.shape {
+  position: absolute;
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  animation: morph 8s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes morph {
+
+  0%,
+  100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: rotate(0deg) scale(1);
+  }
+
+  25% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: rotate(90deg) scale(1.1);
+  }
+
+  50% {
+    border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+    transform: rotate(180deg) scale(0.9);
+  }
+
+  75% {
+    border-radius: 70% 30% 40% 60% / 40% 70% 60% 30%;
+    transform: rotate(270deg) scale(1.05);
+  }
+}
+
+/* HEADER */
+header,
+.header {
+  text-align: center;
+  margin-top: 40px;
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 20px;
+  z-index: 10;
+}
+
+.auth-buttons {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 15px;
+  z-index: 100;
+}
+
+/* AUTH BUTTONS */
+.btn-auth {
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  color: #00ffff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  backdrop-filter: blur(5px);
+}
+
+.btn-auth:hover {
+  background: rgba(0, 255, 255, 0.15);
+  border-color: #00ffff;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+header h1,
+.header h1 {
+  font-size: 3.8rem;
+  letter-spacing: 6px;
+  color: #00ffff;
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+  animation: glitch 5s infinite;
+  margin-top: 50px;
+}
+
+header p {
+  color: rgba(0, 255, 255, 0.7);
+  margin-top: 8px;
+  font-size: 24px;
+  letter-spacing: 2px;
+}
+
+@keyframes glitch {
+
+  0%,
+  90%,
+  100% {
+    transform: translate(0);
+  }
+
+  91% {
+    transform: translate(-2px, 2px);
+  }
+
+  92% {
+    transform: translate(2px, -2px);
+  }
+
+  93% {
+    transform: translate(-2px, -2px);
+  }
+
+  94% {
+    transform: translate(2px, 2px);
+  }
+}
+
+/* CARD CONTAINER */
+.card-container {
+  display: flex;
+  gap: 40px;
+  margin-top: 60px;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+/* CARD STYLES */
+.card {
+  position: relative;
+  width: 360px;
+  height: 270px;
+  padding: 30px;
+  background: rgba(10, 14, 39, 0.8);
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  border-radius: 20px;
+  color: #fff;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+  border-color: #00ffff;
+}
+
+/* CARD CONTENT */
+.card h2 {
+  font-size: 2.2rem;
+  color: #00ffff;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.card p {
+  font-size: 1.4rem;
+  line-height: 1.5;
+  color: rgba(0, 255, 255, 0.8);
+  margin-bottom: 20px;
+}
+
+.card .action {
+  position: absolute;
+  bottom: 25px;
+  right: 30px;
+  font-size: 1.15rem;
+  color: #00ff88;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.card:hover .action {
+  color: #00ffff;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+/* GLOW EFFECT (Simplifying for new theme) */
+.card .glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover .glow {
+  opacity: 1;
+}
+
+/* ACTIVE / DIMMED CARD STATES */
+.card-active {
+  border-color: #00ffff !important;
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.4), inset 0 0 20px rgba(0, 255, 255, 0.05) !important;
+  transform: translateY(-6px);
+}
+
+.card-active .action {
+  color: #00ffff;
+  font-weight: bold;
+}
+
+.card-active::after {
+  content: 'ACTIVE';
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #00ffff;
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  animation: activePulse 2s ease-in-out infinite;
+}
+
+@keyframes activePulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.card-dimmed {
+  opacity: 0.75;
+  transform: scale(0.97);
+  pointer-events: auto;
+  transition: all 0.3s ease;
+}
+
+.card-dimmed:hover {
+  opacity: 0.9;
+  transform: scale(0.97) translateY(-4px);
+}
+
+/* CONTENT AREA */
+.content-area {
+  display: none;
+  margin: 60px auto;
+  max-width: 900px;
+  width: 90%;
+  position: relative;
+  z-index: 10;
+}
+
+/* FORMS (Matching .form-container styles) */
+.form-container {
+  background: rgba(10, 14, 39, 0.8);
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  border-radius: 25px;
+  padding: 50px 55px;
+  box-shadow: 0 0 60px rgba(0, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+
+/* HOME PAGE BODY OVERRIDE
+   Overrides the auth.css full-viewport-centering that runs on auth pages.
+   home.php sets <body class="home-page"> so these only apply there. */
+body.home-page {
+  overflow-y: auto;
+  justify-content: flex-start;
+}
+
+.form-container h2 {
+  color: #00ffff;
+  text-align: center;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+  font-size: 2rem;
+}
+
+.form-group {
+  margin-bottom: 6px;
+  position: relative;
+}
+
+/* .input-group — home.php upload zones (drag-and-drop, hover border) */
+.input-group {
+  margin-bottom: 25px;
+  transition: all 0.3s ease;
+  border: 2px dashed transparent;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.input-group:hover {
+  background: rgba(0, 255, 255, 0.02);
+  border-color: rgba(0, 255, 255, 0.2);
+}
+
+.input-group.drag-over {
+  border-color: #00ffff !important;
+  background: rgba(0, 255, 255, 0.15) !important;
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.4), inset 0 0 20px rgba(0, 255, 255, 0.2);
+  transform: scale(1.02);
+}
+
+.input-group label,
+.form-label {
+  display: block;
+  color: #00ffff;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"],
+.input-group textarea,
+.input-group input[type="file"],
+.input-field {
+  width: 100%;
+  padding: 18px 20px;
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #00ffff;
+  font-family: 'Courier New', monospace;
+  font-size: 19px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.input-field {
+  padding-left: 45px;
+  /* Space for icon */
+}
+
+.input-group textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.input-group input:focus,
+.input-group textarea:focus,
+.input-field:focus {
+  background: rgba(0, 255, 255, 0.1);
+  border-color: #00ffff;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+
+
+.btn-submit,
+.submit-btn {
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 136, 0.2));
+  border: 2px solid #00ffff;
+  border-radius: 10px;
+  color: #00ffff;
+  font-family: 'Courier New', monospace;
+  font-size: 22px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 14px;
+}
+
+.btn-submit:hover,
+.submit-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 136, 0.3));
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.decode-form .btn-submit {
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+
+  header,
+  .header {
+    margin-top: 60px;
+  }
+
+  .auth-buttons {
+    top: 20px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* FILE PREVIEW COMPONENT */
+.preview-container {
+  margin-top: 15px;
+  position: relative;
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.preview-img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.file-info {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: #00ffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Courier New', monospace;
+}
+
+.file-size {
+  font-size: 0.75rem;
+  color: rgba(0, 255, 255, 0.6);
+  font-family: 'Courier New', monospace;
+}
+
+.remove-btn {
+  background: transparent;
+  border: none;
+  color: #ff4444;
+  font-size: 1.5rem;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.remove-btn:hover {
+  color: #ff0000;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+/* Hide input when file selected, EXCEPT for secret/multiple input */
+.input-group.has-file:not(#group-secret) input[type="file"] {
+  display: none;
+}
+
+/* ADDED FOR PASSWORD TOGGLE */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-icon {
+  position: absolute;
+  right: 15px;
+  color: #00ffff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.toggle-icon:hover {
+  color: #00ff88;
+  transform: scale(1.2);
+}
+
+/* ADJUST INPUT PADDING IF ICON IS PRESENT */
+.input-wrapper input[type='password'],
+.input-wrapper input[type='text'] {
+  padding-right: 40px !important;
+}
+
+/* TOOLTIP STYLES */
+.tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 280px;
+  padding: 12px;
+  background: rgba(10, 14, 39, 0.95);
+  border: 1px solid #00ffff;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  z-index: 9999;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  margin-top: 8px;
+  backdrop-filter: blur(5px);
+  text-align: left;
+}
+
+.tooltip strong {
+  color: #00ffff;
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.95rem;
+}
+
+.fa-circle-info {
+  margin-left: 5px;
+  cursor: help;
+  transition: color 0.2s;
+}
+
+.fa-circle-info:hover {
+  color: #ffffff !important;
+}
+
+/* ====== ADDITIONS FROM STYLE1.CSS FOR AUTH PAGES ====== */
+
+.scan-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  top: 0;
+  animation: scan 2s linear infinite;
+}
+
+@keyframes scan {
+  0% {
+    top: 0;
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.status-text {
+  color: #00ff88;
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.status-text::before {
+  content: '▶ ';
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.field-icon {
+  position: absolute;
+  left: 15px;
+  color: #00ffff;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+
+
+.corner-decoration {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #00ffff;
+}
+
+.corner-decoration.top-left {
+  top: 10px;
+  left: 10px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.corner-decoration.top-right {
+  top: 10px;
+  right: 10px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.corner-decoration.bottom-left {
+  bottom: 10px;
+  left: 10px;
+  border-right: none;
+  border-top: none;
+}
+
+.corner-decoration.bottom-right {
+  bottom: 10px;
+  right: 10px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Validation Feedback */
+.validation-feedback {
+  display: none;
+  /* Initially hidden */
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: rgba(0, 255, 255, 0.6);
+  animation: fadeIn 0.3s ease;
+}
+
+/* NEON BUTTONS (Home Page) */
+/* NEON BUTTONS (Home Page) */
+.btn-neon {
+  position: relative;
+  display: inline-block;
+  padding: 12px 35px;
+  color: #00ffff;
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: 900;
+  text-decoration: none;
+  text-transform: uppercase;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  letter-spacing: 2px;
+  background: transparent;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+  margin-left: 15px;
+}
+
+.btn-neon:hover {
+  background: rgba(0, 255, 255, 0.05);
+  color: #fff;
+  border-color: #00ffff;
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.4),
+    inset 0 0 10px rgba(0, 255, 255, 0.2);
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+/* ================================================================
+   PROCESSING OVERLAY
+   ================================================================ */
+#processingOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0;
+  animation: overlayFadeIn 0.25s ease forwards;
+}
+
+#processingOverlay.visible {
+  display: flex;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Spinner rings ── */
+.proc-spinner {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 36px;
+}
+
+.proc-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+
+.proc-ring-1 {
+  border-top-color: #00ffff;
+  animation: spinCW 1.0s linear infinite;
+}
+
+.proc-ring-2 {
+  inset: 12px;
+  border-right-color: #00ff88;
+  animation: spinCCW 1.4s linear infinite;
+}
+
+.proc-ring-3 {
+  inset: 24px;
+  border-bottom-color: rgba(0, 255, 255, 0.45);
+  animation: spinCW 1.9s linear infinite;
+}
+
+.proc-lock-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #00ffff;
+  animation: lockPulse 2s ease-in-out infinite;
+  text-shadow: 0 0 18px rgba(0, 255, 255, 0.7);
+}
+
+@keyframes spinCW {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinCCW {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes lockPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 18px rgba(0, 255, 255, 0.7);
+  }
+
+  50% {
+    opacity: 0.5;
+    text-shadow: 0 0 40px rgba(0, 255, 255, 1);
+  }
+}
+
+
+/* ── Scan line over the whole overlay ── */
+#processingOverlay::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  opacity: 0.4;
+  animation: overlayScan 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes overlayScan {
+  0% {
+    top: 0%;
+  }
+
+  100% {
+    top: 100%;
+  }
+}
+/* TOAST NOTIFICATIONS */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toast {
+  min-width: 250px;
+  padding: 15px 20px;
+  background: rgba(10, 14, 39, 0.95);
+  border-left: 4px solid #00ffff;
+  color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+  opacity: 0;
+  transform: translateX(100%);
+  animation: slideIn 0.3s forwards, fadeOut 0.5s 4.5s forwards;
+  font-family: 'Courier New', Courier, monospace;
+}
+.toast-error {
+  border-left-color: #ff0055;
+  box-shadow: 0 0 15px rgba(255, 0, 85, 0.3);
+}
+.toast-success {
+  border-left-color: #00ff88;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+@keyframes slideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeOut {
+  to { opacity: 0; }
+}

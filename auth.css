@@ -1,0 +1,368 @@
+/* ============================================================
+   auth.css — Styles for login.php and register.php ONLY
+   ============================================================ */
+
+/* ── Force full-viewport centering on auth pages ── */
+html {
+    height: 100%;
+}
+
+body {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 125vh !important; /* 100vh ÷ zoom(0.8) = 125vh to fill viewport */
+    width: 125vw !important; /* 100vw ÷ zoom(0.8) = 125vw to fill width properly */
+    margin: 0 !important;
+    padding-top: 90px !important; /* 80px nav + 10px breathing room */
+    padding-bottom: 40px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+    align-self: flex-start; /* prevent centering that clips tall pages */
+}
+
+/* ── Auth Card ── */
+.auth-login-container {
+    position: relative;
+    z-index: 10;
+    background: rgba(10, 14, 39, 0.88);
+    border: 2px solid rgba(0, 255, 255, 0.35);
+    width: 560px !important;
+    max-width: 92vw !important;
+    padding: 40px 48px 44px !important;
+    border-radius: 22px;
+    box-shadow: 0 0 60px rgba(0, 255, 255, 0.25);
+    backdrop-filter: blur(14px);
+    margin: auto !important;
+    box-sizing: border-box !important;
+}
+
+/* ── Corner Decorations ── */
+.corner-decoration {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: #00ffff;
+    border-style: solid;
+    border-width: 0;
+    opacity: 0.8;
+}
+
+.corner-decoration.top-left {
+    top: 10px;
+    left: 10px;
+    border-top-width: 2px;
+    border-left-width: 2px;
+}
+
+.corner-decoration.top-right {
+    top: 10px;
+    right: 10px;
+    border-top-width: 2px;
+    border-right-width: 2px;
+}
+
+.corner-decoration.bottom-left {
+    bottom: 10px;
+    left: 10px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+}
+
+.corner-decoration.bottom-right {
+    bottom: 10px;
+    right: 10px;
+    border-bottom-width: 2px;
+    border-right-width: 2px;
+}
+
+/* ── Auth Header (REGISTER / LOGIN title block) ── */
+.auth-login-container .auth-header {
+    text-align: center;
+    margin: 0 0 12px !important;
+    padding: 0;
+    width: auto;
+    max-width: none;
+    position: relative;
+}
+
+.auth-login-container .auth-header h1 {
+    font-size: 2.6rem !important;
+    letter-spacing: 6px;
+    color: #00ffff;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    margin: 8px 0 4px;
+    animation: glitch 5s infinite;
+}
+
+.auth-login-container .auth-header .auth-status-text {
+    color: rgba(0, 255, 136, 0.85);
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin: 6px 0 0;
+}
+
+/* Scan-line effect inside header */
+.auth-scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ffff, transparent);
+    animation: scan 3s linear infinite;
+    opacity: 0.6;
+}
+
+@keyframes scan {
+    0% {
+        top: 0%;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+/* ── Form Fields ── */
+.auth-form-group {
+    margin-bottom: 18px !important;
+    position: relative;
+}
+
+.auth-form-label {
+    display: block;
+    color: #00ffff;
+    font-size: 13px !important;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin-bottom: 8px !important;
+    font-weight: bold;
+}
+
+/* Input wrapper holds the icon + input side by side */
+.auth-input-wrapper {
+    position: relative;
+}
+
+.auth-field-icon {
+    position: absolute;
+    left: 18px !important;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(0, 255, 255, 0.5);
+    font-size: 18px !important;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.auth-input-field {
+    width: 100%;
+    padding: 15px 16px 15px 48px !important;
+    background: rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    border-radius: 10px;
+    color: #00ffff;
+    font-family: 'Courier New', monospace;
+    font-size: 17px !important;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+    box-sizing: border-box;
+}
+
+.auth-input-field:focus {
+    background: rgba(0, 255, 255, 0.08);
+    border-color: #00ffff;
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.25);
+}
+
+/* Toggle eye icon */
+.auth-toggle-icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(0, 255, 255, 0.5);
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+
+.auth-toggle-icon:hover {
+    color: #00ffff;
+}
+
+/* ── Submit Button ── */
+.auth-submit-btn {
+    width: 100%;
+    padding: 16px !important;
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 136, 0.2));
+    border: 2px solid #00ffff;
+    border-radius: 10px;
+    color: #00ffff;
+    font-family: 'Courier New', monospace;
+    font-size: 19px !important;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px !important;
+}
+
+.auth-submit-btn:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 136, 0.3));
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+/* ── Checkbox row (Remember me / Forgot) ── */
+.auth-checkbox-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.auth-custom-checkbox {
+    display: flex;
+    align-items: center;
+    color: rgba(0, 255, 255, 0.7);
+    font-size: 14px;
+    cursor: pointer;
+    gap: 6px;
+}
+
+.auth-custom-checkbox input {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+.auth-forgot-link {
+    color: rgba(0, 255, 255, 0.7);
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.auth-forgot-link:hover {
+    color: #00ffff;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+/* ── Divider ── */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+}
+
+.auth-divider-text {
+    padding: 0 12px;
+    color: rgba(0, 255, 255, 0.5);
+    font-size: 12px;
+    letter-spacing: 2px;
+}
+
+/* ── Register / Login Link ── */
+.auth-register-link {
+    text-align: center;
+    margin-top: 16px;
+}
+
+.auth-register-link a {
+    color: #00ff88;
+    text-decoration: none;
+    font-size: 18px;
+    letter-spacing: 1px;
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.auth-register-link a:hover {
+    color: #00ff88;
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
+}
+
+/* ── Error / Success Feedback ── */
+.auth-error-msg {
+    color: #ff4444;
+    background: rgba(255, 68, 68, 0.08);
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 0.85em;
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    text-align: left;
+}
+
+.auth-success-msg {
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.08);
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 0.85em;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.auth-err-item {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Password Validation Feedback ── */
+.auth-validation-feedback {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    color: rgba(0, 255, 255, 0.6);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-valid-rule {
+    color: #00ff88;
+    transition: color 0.3s;
+}
+
+.auth-invalid-rule {
+    color: #ff4444;
+    transition: color 0.3s;
+}
+
+.auth-match-feedback {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: bold;
+    transition: all 0.3s;
+    min-height: 18px;
+}
