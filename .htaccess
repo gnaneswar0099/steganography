@@ -1,12 +1,12 @@
 Options -Indexes
 
 # Custom error pages
-ErrorDocument 400 /steganography/error.php?code=400
-ErrorDocument 403 /steganography/error.php?code=403
-ErrorDocument 404 /steganography/error.php?code=404
-ErrorDocument 405 /steganography/error.php?code=405
-ErrorDocument 500 /steganography/error.php?code=500
-ErrorDocument 503 /steganography/error.php?code=503
+ErrorDocument 400 /error.php?code=400
+ErrorDocument 403 /error.php?code=403
+ErrorDocument 404 /error.php?code=404
+ErrorDocument 405 /error.php?code=405
+ErrorDocument 500 /error.php?code=500
+ErrorDocument 503 /error.php?code=503
 
 # Security headers
 <IfModule mod_headers.c>
