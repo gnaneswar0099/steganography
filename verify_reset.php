@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/app_config.php';
+
 // SECURITY HEADERS
 header("Referrer-Policy: no-referrer");
 header("X-Frame-Options: DENY");
@@ -9,7 +11,7 @@ header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:
 
 // SESSION TIMEOUT EXTENSION (2 Hours)
 ini_set('session.gc_maxlifetime', '7200');
-$isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+$isSecure = app_is_https();
 session_set_cookie_params([
     'lifetime' => 7200,
     'path' => '/',

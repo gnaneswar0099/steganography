@@ -23,7 +23,7 @@ ErrorDocument 503 /error.php?code=503
 </IfModule>
 
 # Block access to sensitive files
-<FilesMatch "^(db\.php|crypto\.php|lsb\.php|prng\.php|payload\.php|auth_check\.php|nav\.php|\.env|composer\.json|composer\.lock|requirements\.txt)$">
+<FilesMatch "^(app_config\.php|db\.php|crypto\.php|lsb\.php|prng\.php|payload\.php|auth_check\.php|nav\.php|\.env|composer\.json|composer\.lock|requirements\.txt|database_schema\.sql)$">
     Order allow,deny
     Deny from all
 </FilesMatch>

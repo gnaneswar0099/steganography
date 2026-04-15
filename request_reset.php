@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/app_config.php';
+
 // 8. SECURITY HEADERS
 header("Referrer-Policy: no-referrer");
 header("X-Frame-Options: DENY");
@@ -12,7 +14,7 @@ use PHPMailer\PHPMailer\Exception;
 
 // 9. SESSION TIMEOUT EXTENSION (2 Hours)
 ini_set('session.gc_maxlifetime', '7200');
-$isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+$isSecure = app_is_https();
 session_set_cookie_params([
     'lifetime' => 7200, // 2 hours instead of transient
     'path' => '/',
@@ -128,12 +130,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Fallback parser if getenv() is empty natively due to missing phpdotenv library loaders
                         $envPath = __DIR__ . '/.env';
-                        $env = file_exists($envPath) ? parse_ini_file($envPath) : [];
+                        $env = file_exists($envPath) ? (parse_ini_file($envPath) ?: []) : [];
                         
-                        $smtpHost = $env['SMTP_HOST'] ?? getenv('SMTP_HOST') ?: 'smtp.gmail.com';
-                        $smtpUser = $env['SMTP_USER'] ?? getenv('SMTP_USER') ?: '';
-                        $smtpPass = $env['SMTP_PASS'] ?? getenv('SMTP_PASS') ?: '';
-                        $smtpPort = (int)($env['SMTP_PORT'] ?? getenv('SMTP_PORT') ?: 587);
+                        $smtpHost = app_env('SMTP_HOST', $env, 'smtp.gmail.com');
+                        $smtpUser = app_env('SMTP_USER', $env, '');
+                        $smtpPass = app_env('SMTP_PASS', $env, '');
+                        $smtpPort = (int) app_env('SMTP_PORT', $env, '587');
 
                         $mail = new PHPMailer(true);
                         

@@ -3,9 +3,11 @@
 // UI ONLY - NO BACKEND CRYPTO/STEGO LOGIC HERE
 declare(strict_types=1);
 
+require_once __DIR__ . '/app_config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     // Session Security
-    $isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    $isHttps = app_is_https();
     session_set_cookie_params([
         'lifetime' => 7200,
         'path' => '/',

@@ -2,6 +2,8 @@
 // ===== db.php =====
 declare(strict_types=1);
 
+require_once __DIR__ . '/app_config.php';
+
 // BLOCK DIRECT ACCESS
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     http_response_code(403);
@@ -24,11 +26,11 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
 */
 $_env = file_exists(__DIR__ . '/.env') ? (parse_ini_file(__DIR__ . '/.env') ?: []) : [];
 
-$db_host    = $_env['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
-$db_port    = $_env['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
-$db_name    = $_env['DB_NAME'] ?? getenv('DB_NAME') ?: 'steganography';
-$db_user    = $_env['DB_USER'] ?? getenv('DB_USER') ?: 'steg_user';
-$db_pass    = $_env['DB_PASS'] ?? getenv('DB_PASS') ?: '';
+$db_host    = app_env('DB_HOST', $_env, 'localhost');
+$db_port    = app_env('DB_PORT', $_env, '3306');
+$db_name    = app_env('DB_NAME', $_env, 'steganography');
+$db_user    = app_env('DB_USER', $_env, 'steg_user');
+$db_pass    = app_env('DB_PASS', $_env, '');
 $db_charset = "utf8mb4";
 
 unset($_env); // Don't leave credentials in scope

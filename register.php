@@ -1,12 +1,13 @@
 <?php
 // ===== register.php =====
 declare(strict_types=1);
+require_once __DIR__ . '/app_config.php';
 require_once 'db.php';
 
 // Start Session (Strict)
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', '7200');
-    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    $isSecure = app_is_https();
     session_set_cookie_params([
         'lifetime' => 7200,
         'path' => '/',
