@@ -47,6 +47,23 @@ $options = [
     PDO::ATTR_STRINGIFY_FETCHES => false,
 ];
 
+if (str_ends_with(strtolower($db_host), '.mysql.database.azure.com')) {
+    $sslCaCandidates = array_filter([
+        app_env('MYSQL_SSL_CA', $_env ?? null),
+        '/etc/ssl/certs/ca-certificates.crt',
+        '/etc/pki/tls/certs/ca-bundle.crt',
+        'C:\\xampp\\apache\\bin\\curl-ca-bundle.crt',
+        'C:\\xampp\\php\\extras\\ssl\\cacert.pem',
+    ]);
+
+    foreach ($sslCaCandidates as $sslCaPath) {
+        if (is_string($sslCaPath) && file_exists($sslCaPath)) {
+            $options[PDO::MYSQL_ATTR_SSL_CA] = $sslCaPath;
+            break;
+        }
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | Create Connection
