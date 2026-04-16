@@ -1,5 +1,9 @@
 Options -Indexes
 
+# Increase upload limits for large image files
+php_value upload_max_filesize 50M
+php_value post_max_size 50M
+
 # Custom error pages
 ErrorDocument 400 /error.php?code=400
 ErrorDocument 403 /error.php?code=403
