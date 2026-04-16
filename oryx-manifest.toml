@@ -1,0 +1,18 @@
+[build]
+runtime = "php"
+runtimeVersion = "8.3"
+packageManager = "composer"
+
+[config]
+nginxDefaultConf = """
+client_max_body_size 50M;
+"""
+
+[startupScriptCommands]
+# This ensures upload limits are set before nginx starts
+commands = [
+  "mkdir -p /etc/nginx/conf.d",
+  "echo 'client_max_body_size 50M;' > /etc/nginx/conf.d/uploads.conf",
+  "/usr/sbin/php-fpm",
+  "nginx -g 'daemon off;'"
+]

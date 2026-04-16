@@ -10,7 +10,11 @@ ini_set('log_errors', '1');
 
 // Allow enough memory and time for GD pixel processing on large images
 ini_set('memory_limit', '512M');
-set_time_limit(180);
+ini_set('upload_max_filesize', '50M');
+ini_set('post_max_size', '50M');
+ini_set('max_input_time', '300');
+ini_set('max_execution_time', '300');
+set_time_limit(300);
 
 // Buffer ALL output from this point — cleared before sending binary or error
 ob_start();
