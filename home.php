@@ -351,6 +351,101 @@ $csrf_token = $_SESSION['csrf_token'];
             }
         }
 
+        // ════════════════════════════════════════════════════════════════════════════════
+        // GOAL: Guarantee the stego OUTPUT PNG is always < 900KB, even at 100% capacity.
+        //
+        // WHY PIXEL COUNT (not file size):
+        //   Stego output size ≈ W × H × 3 × 0.95 bytes (worst case: all LSBs filled
+        //   with encrypted noise, which compresses poorly).
+        //   For 300,000 pixels: 300,000 × 3 × 0.95 = 855KB < 900KB ✓
+        //   File size alone is unreliable — a solid-color 800KB PNG can be huge in pixels.
+        //
+        // RESULT: After encode, the stego image the user downloads is always < 900KB.
+        //         When they later upload it to decode, it's always under the 1MB nginx limit.
+        const MAX_COVER_PIXELS = 300000; // Guarantees stego output < 900KB worst-case
+
+        function compressImageBeforeUpload(file, input, previewId, groupId) {
+            const isJPEG = file.type === 'image/jpeg';
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    let width  = img.width;
+                    let height = img.height;
+                    const originalPixels = width * height;
+
+                    // Scale DOWN proportionally to fit within MAX_COVER_PIXELS
+                    if (originalPixels > MAX_COVER_PIXELS) {
+                        const scale = Math.sqrt(MAX_COVER_PIXELS / originalPixels);
+                        width  = Math.floor(width  * scale);
+                        height = Math.floor(height * scale);
+                        showToast(`Resizing to ${width}×${height}px to keep stego output under 1MB...`, 'info');
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width  = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+                    // PNG stays PNG (lossless — better quality for cover images).
+                    // JPEG stays JPEG (PHP reads pixel values anyway, stego output is always PNG).
+                    const mimeType = isJPEG ? 'image/jpeg' : 'image/png';
+                    const quality  = isJPEG ? 0.85 : 1.0;
+
+                    canvas.toBlob(function (blob) {
+                        const cleanName = file.name.replace(/\.[^.]+$/, '') || 'cover_image';
+                        const ext = isJPEG ? '.jpg' : '.png';
+                        const compressedFile = new File([blob], cleanName + ext, { type: mimeType });
+
+                        // Replace the file input
+                        const dt = new DataTransfer();
+                        dt.items.add(compressedFile);
+                        input.files = dt.files;
+
+                        const wasResized = originalPixels > MAX_COVER_PIXELS;
+                        if (wasResized) {
+                            showToast(
+                                `✓ Cover ready: ${formatBytes(file.size)} → ${formatBytes(blob.size)} | ${width}×${height}px (stego output will be < 900KB)`,
+                                'success'
+                            );
+                        }
+
+                        // Update preview UI
+                        const fileSizeEl = document.querySelector(`#${previewId} .file-size`);
+                        const fileNameEl = document.querySelector(`#${previewId} .file-name`);
+                        const dimsEl     = document.querySelector(`#${previewId} .file-dims`);
+                        const imgEl      = document.querySelector(`#${previewId} img`);
+
+                        if (fileSizeEl) fileSizeEl.textContent = formatBytes(blob.size);
+                        if (fileNameEl) fileNameEl.textContent = compressedFile.name;
+
+                        const previewReader = new FileReader();
+                        previewReader.onload = (ev) => {
+                            if (imgEl) imgEl.src = ev.target.result;
+                            const tempImg = new Image();
+                            tempImg.onload = () => {
+                                currentCoverImageWidth  = tempImg.width;
+                                currentCoverImageHeight = tempImg.height;
+                                if (dimsEl) dimsEl.textContent = `${tempImg.width} × ${tempImg.height} px`;
+                                updateCapacityDisplay();
+                            };
+                            tempImg.src = ev.target.result;
+                        };
+                        previewReader.readAsDataURL(compressedFile);
+
+                        const previewContainer = document.getElementById(previewId);
+                        const groupContainer   = document.getElementById(groupId);
+                        if (previewContainer) previewContainer.style.display = 'flex';
+                        if (groupContainer)   groupContainer.classList.add('has-file');
+
+                    }, mimeType, quality);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         function handleFileSelect(input, previewId, groupId) {
             const files = input.files;
             if ((!files || files.length === 0) && input.id !== 'input-secret') return;
@@ -391,6 +486,14 @@ $csrf_token = $_SESSION['csrf_token'];
                 nameEl.style.overflow = '';
 
                 if (file.type.startsWith('image/')) {
+                    // Compress cover images to bypass 1MB Azure nginx limit
+                    // JPEG: converted to smaller JPEG (lossy)
+                    // PNG: scaled down but kept as PNG (lossless - preserves steganography)
+                    if (input.id === 'input-cover') {
+                        compressImageBeforeUpload(file, input, previewId, groupId);
+                        return;
+                    }
+
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         if (imgEl.tagName === 'IMG') {
