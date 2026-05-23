@@ -921,7 +921,8 @@ $csrf_token = $_SESSION['csrf_token'];
 
                 const response = await fetch('process_encode.php', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -1060,7 +1061,7 @@ $csrf_token = $_SESSION['csrf_token'];
             formData.append('password', pass);
 
             try {
-                const response = await fetch('process_decode.php', { method: 'POST', body: formData });
+                const response = await fetch('process_decode.php', { method: 'POST', body: formData, credentials: 'include' });
                 if (response.ok) {
                     const blob = await response.blob();
 
