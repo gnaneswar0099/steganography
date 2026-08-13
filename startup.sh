@@ -1,12 +1,14 @@
 #!/bin/bash
 # ============================================================
 # startup.sh — Azure App Service PHP startup script
-# Writes secure nginx config (access restrictions + upload
-# limits) BEFORE nginx starts on every container restart.
+# Azure overwrites /etc/nginx/sites-enabled/default AFTER
+# this script runs, so we write our config AND schedule a
+# background reload to apply it after nginx has started.
 # ============================================================
 
-echo "[startup] Writing secure nginx site config..."
+echo "[startup] Writing secure nginx config..."
 
+write_nginx_config() {
 cat > /etc/nginx/sites-enabled/default << 'NGINXEOF'
 server {
     listen 8080;
@@ -74,11 +76,24 @@ server {
     }
 }
 NGINXEOF
+}
 
-echo "[startup] Writing nginx upload limits..."
+# Write config now (before nginx starts)
+write_nginx_config
 
+# Upload limits
 cat > /etc/nginx/conf.d/upload_limits.conf << 'EOF'
 client_max_body_size 50M;
 EOF
 
-echo "[startup] Done. Security rules and upload limits applied."
+# Background process: wait for nginx to start, then write config again
+# and reload — this handles the case where Azure overwrites our config
+# after this script exits.
+(
+    sleep 15
+    write_nginx_config
+    nginx -s reload
+    echo "[startup] nginx reloaded with security rules at $(date)"
+) &
+
+echo "[startup] Done. Security rules applied and background reload scheduled."
