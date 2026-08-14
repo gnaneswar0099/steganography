@@ -210,7 +210,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <div class="auth-input-wrapper">
                     <i class="fa-solid fa-lock auth-field-icon"></i>
                     <input type="password" name="password" id="passwordField" class="auth-input-field"
-                        placeholder="Enter password" required autocomplete="current-password">
+                        placeholder="Enter password" required autocomplete="off">
                     <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
                 </div>
             </div>

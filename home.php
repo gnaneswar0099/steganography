@@ -304,7 +304,7 @@ $csrf_token = $_SESSION['csrf_token'];
                         <div class="input-group">
                             <label>Password</label>
                             <div class="input-wrapper">
-                                <input type="password" name="password" id="encode-pass" placeholder="Enter password">
+                                <input type="password" name="password" id="encode-pass" placeholder="Enter password" autocomplete="off">
                                 <i class="fa-solid fa-eye toggle-icon"></i>
                             </div>
                             <div class="validation-feedback" id="encodePasswordRules" style="display:none; flex-direction:column; gap:5px; margin-top:10px; font-size:0.8rem; color:rgba(0, 255, 255, 0.6);">
@@ -341,7 +341,7 @@ $csrf_token = $_SESSION['csrf_token'];
                         <div class="input-group">
                             <label>Password</label>
                             <div class="input-wrapper">
-                                <input type="password" name="password" id="decode-pass" placeholder="Enter password" required>
+                                <input type="password" name="password" id="decode-pass" placeholder="Enter password" required autocomplete="off">
                                 <i class="fa-solid fa-eye toggle-icon"></i>
                             </div>
                         </div>
