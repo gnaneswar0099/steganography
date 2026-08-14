@@ -83,6 +83,7 @@ server {
         fastcgi_buffers 4 256k;
         fastcgi_busy_buffers_size 256k;
         fastcgi_temp_file_write_size 256k;
+        fastcgi_hide_header X-Powered-By;
     }
 }
 NGINXEOF
