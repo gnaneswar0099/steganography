@@ -222,9 +222,9 @@ or MySQL CLI before first use.
 ---- .env (Plain INI format) ----
   SMTP_HOST = smtp.gmail.com
   SMTP_USER = your_email@gmail.com
-  SMTP_PASS = your_app_password        ← Use a Gmail "App Password", not your real password
+  SMTP_PASS = [REDACTED]
   SMTP_PORT = 587                      ← STARTTLS port
-  DB_PASS   = StrongPass@123           ← MySQL password for steg_user
+  DB_PASS   = [REDACTED]
 
   Reading mechanism (in db.php and request_reset.php):
     $_env = parse_ini_file(__DIR__ . '/.env');

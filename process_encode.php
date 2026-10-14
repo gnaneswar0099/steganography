@@ -9,12 +9,33 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
 // Allow enough memory and time for GD pixel processing on large images
-ini_set('memory_limit', '512M');
-ini_set('upload_max_filesize', '50M');
-ini_set('post_max_size', '50M');
+// memory_limit controlled by docker/php.ini
+// upload_max_filesize controlled by docker/php.ini
+// post_max_size controlled by docker/php.ini
 ini_set('max_input_time', '300');
 ini_set('max_execution_time', '300');
 set_time_limit(300);
+
+register_shutdown_function(static function (): void {
+    $lastError = error_get_last();
+    $fatalTypes = [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_USER_ERROR];
+
+    if ($lastError === null || !in_array($lastError['type'], $fatalTypes, true)) {
+        return;
+    }
+
+    error_log('Encode fatal error: ' . $lastError['message']);
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=UTF-8');
+    }
+
+    echo 'Encoding could not be completed. Please use a smaller image or secret file and try again.';
+});
 
 // Buffer ALL output from this point — cleared before sending binary or error
 ob_start();
@@ -24,6 +45,7 @@ ob_start();
 // ---------------------------------------------------------------
 try {
 
+    require_once __DIR__ . '/app_config.php';
     require_once 'crypto.php';
     require_once 'prng.php';
     require_once 'payload.php';
@@ -74,7 +96,7 @@ try {
         throw new RuntimeException("Cover image upload failed.");
     }
 
-    $coverOriginalName = basename($_FILES['cover_image']['name'] ?? 'unknown');
+    $coverOriginalName = mb_substr(basename($_FILES['cover_image']['name'] ?? 'unknown'), 0, 255);
     $coverPath = $_FILES['cover_image']['tmp_name'];
 
     // Verify it's a valid PNG or JPEG using getimagesize()
@@ -114,12 +136,14 @@ try {
         throw new RuntimeException("Too many files. Max 15 allowed.");
     }
 
+    $maxPayloadKb = app_payload_max_kb();
+    $maxPayloadBytes = $maxPayloadKb * 1024;
     $totalSize = 0;
     foreach ($files['size'] as $s) {
         $totalSize += (int) $s;
     }
-    if ($totalSize > 10 * 1024 * 1024) {
-        throw new RuntimeException("Total file size exceeds 10 MB.");
+    if ($totalSize > $maxPayloadBytes) {
+        throw new RuntimeException("Total secret size is limited to {$maxPayloadKb} KB on this demo.");
     }
 
     // Create a temporary zip file
@@ -245,4 +269,3 @@ try {
     echo $msg;
     exit;
 }
-

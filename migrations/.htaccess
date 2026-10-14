@@ -1,0 +1,2 @@
+# Prevent access to SQL migrations
+Require all denied

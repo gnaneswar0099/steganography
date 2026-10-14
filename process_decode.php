@@ -9,7 +9,7 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
 // Allow enough memory and time for GD pixel processing on large images
-ini_set('memory_limit', '512M');
+// memory_limit controlled by docker/php.ini
 set_time_limit(180);
 
 // Buffer ALL output from this point — cleared before sending binary or error
@@ -83,7 +83,7 @@ try {
         throw new RuntimeException("Stego image must be a valid PNG file. (Detected: $detected)");
     }
 
-    $stegoOriginalName = basename($_FILES['stego_image']['name'] ?? 'unknown');
+    $stegoOriginalName = mb_substr(basename($_FILES['stego_image']['name'] ?? 'unknown'), 0, 255);
     $imgWidth  = (int) ($imageInfo[0] ?? 0);
     $imgHeight = (int) ($imageInfo[1] ?? 0);
 

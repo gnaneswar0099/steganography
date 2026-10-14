@@ -1,33 +1,35 @@
 Options -Indexes
 
-# Increase upload limits for large image files
-php_value upload_max_filesize 200M
-php_value post_max_size 200M
+# Upload limits - identical to docker/php.ini
+php_value upload_max_filesize 20M
+php_value post_max_size 35M
+php_value max_file_uploads 16
 
 # Custom error pages
-ErrorDocument 400 /error.php?code=400
-ErrorDocument 403 /error.php?code=403
-ErrorDocument 404 /error.php?code=404
-ErrorDocument 405 /error.php?code=405
-ErrorDocument 500 /error.php?code=500
-ErrorDocument 503 /error.php?code=503
+ErrorDocument 400 error.php?code=400
+ErrorDocument 401 error.php?code=401
+ErrorDocument 403 error.php?code=403
+ErrorDocument 404 error.php?code=404
+ErrorDocument 405 error.php?code=405
+ErrorDocument 500 error.php?code=500
+ErrorDocument 503 error.php?code=503
 
-# Security headers
+# Security headers (CSP left untouched)
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
-    Header set X-Frame-Options "SAMEORIGIN"
-    # X-XSS-Protection removed: deprecated and removed from Chromium in 2019.
-    # Modern browsers rely on Content-Security-Policy instead.
+    Header set X-Frame-Options "DENY"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
-
-    # Global Content-Security-Policy (covers pages that don't set their own per-request):
-    # Auth pages (login, register, request_reset, verify_reset) set a stricter CSP in PHP
-    # and will override this header for their responses.
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
     Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none';"
 </IfModule>
 
-# Block access to sensitive files
-<FilesMatch "^(app_config\.php|db\.php|crypto\.php|lsb\.php|prng\.php|payload\.php|auth_check\.php|nav\.php|\.env|composer\.json|composer\.lock|requirements\.txt|database_schema\.sql)$">
-    Order allow,deny
-    Deny from all
+# Block access to sensitive files (Apache 2.4 syntax)
+<FilesMatch "^(app_config\.php|db\.php|crypto\.php|lsb\.php|prng\.php|payload\.php|auth_check\.php|nav\.php|mailer\.php|\.env|composer\.json|composer\.lock|requirements\.txt|database_schema\.sql|ca\.pem|schema\.sql|.*\.sql)$">
+    Require all denied
 </FilesMatch>
+
+# Block access to migrations directory
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^migrations(/.*)?$ - [F,L]
+</IfModule>

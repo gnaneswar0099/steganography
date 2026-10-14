@@ -30,3 +30,33 @@ function app_env(string $key, ?array $fileEnv = null, ?string $default = null): 
 
     return $default;
 }
+
+function app_runtime_env(): array
+{
+    static $fileEnv;
+
+    if ($fileEnv === null) {
+        $envPath = __DIR__ . '/.env';
+        $fileEnv = is_file($envPath) ? (@parse_ini_file($envPath) ?: []) : [];
+    }
+
+    return $fileEnv;
+}
+
+function app_max_image_pixels(): int
+{
+    $val = app_env('MAX_IMAGE_PIXELS', app_runtime_env(), '9000000');
+    return max(100000, (int) $val);
+}
+
+function app_payload_max_kb(): int
+{
+    $val = app_env('PAYLOAD_MAX_KB', app_runtime_env(), '200');
+    return max(1, (int) $val);
+}
+
+function app_email_verification_required(): bool
+{
+    $value = strtolower(trim((string) app_env('EMAIL_VERIFICATION_REQUIRED', app_runtime_env(), '1')));
+    return !in_array($value, ['0', 'false', 'no'], true);
+}

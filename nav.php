@@ -1,6 +1,6 @@
 <?php
 // ===== nav.php =====
-// Shared navigation bar — included by every page.
+// Shared navigation bar â€” included by every page.
 // BLOCK DIRECT ACCESS
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     http_response_code(403);
@@ -47,10 +47,14 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
                     <i class="fa-solid fa-chevron-down nav-chevron" id="navChevron"></i>
                 </div>
                 <div class="nav-dropdown" id="navDropdown">
-                    <button class="nav-dropdown-item nav-logout-btn" id="navLogoutBtn">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        Logout
-                    </button>
+                    <!-- A8: Logout is POST with CSRF -->
+                    <form id="logoutForm" method="POST" action="logout.php" style="margin: 0; padding: 0;">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                        <button type="submit" class="nav-dropdown-item nav-logout-btn" id="navLogoutBtn">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            Logout
+                        </button>
+                    </form>
                 </div>
             </div>
         <?php else: ?>
@@ -64,7 +68,7 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     </div>
 </nav>
 
-<!-- Processing Overlay — shared across all pages -->
+<!-- Processing Overlay â€” shared across all pages -->
 <div id="processingOverlay" role="status" aria-live="polite" aria-label="Processing">
     <div class="proc-spinner">
         <div class="proc-ring proc-ring-1"></div>
@@ -79,7 +83,7 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     const pill     = document.getElementById('navUserPill');
     const dropdown = document.getElementById('navDropdown');
     const chevron  = document.getElementById('navChevron');
-    const logoutBtn = document.getElementById('navLogoutBtn');
+    const logoutForm = document.getElementById('logoutForm');
 
     if (pill && dropdown) {
         pill.addEventListener('click', function (e) {
@@ -99,12 +103,11 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
         });
     }
 
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function () {
+    if (logoutForm) {
+        logoutForm.addEventListener('submit', function () {
             const overlay = document.getElementById('processingOverlay');
             if (overlay) overlay.classList.add('visible');
             document.body.style.overflow = 'hidden';
-            window.location.href = 'logout.php';
         });
     }
 })();

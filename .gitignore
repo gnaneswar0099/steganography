@@ -1,19 +1,29 @@
+# ── Secrets — NEVER commit real credentials ───────────────────────────────────
 .env
+.env.*
+
+# ── ca.pem and schema.sql are intentionally tracked ───────────────────────────
+# ca.pem is Aiven public CA cert; schema.sql is the setup schema
+
+# ── PHP dependencies (installed at build time) ────────────────────────────────
 vendor/
 
-# OS Files
+# ── OS Files ──────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
 *~
 
-# IDE Files
+# ── IDE Files ─────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.sublime-workspace
 
-# Runtime/Cache directories
+# ── Runtime / Cache directories ───────────────────────────────────────────────
 /uploads/*
 /tmp/*
 /cache/*
+
+# ── Keep example configuration tracked (must be after .env.*) ────────────────
+!.env.example

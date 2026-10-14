@@ -254,7 +254,12 @@ steganography/
 ├── logout.php          — Session destroy + redirect
 ├── request_reset.php   — Password reset request handler
 ├── verify_reset.php    — Password reset token verification
-├── db.php              — PDO database connection
+├── verify_email.php    — Email verification activation link handler
+├── resend_verification.php — Resend account activation link
+├── mailer.php          — Transactional email dispatcher (Brevo HTTPS API / SMTP / Log)
+├── health.php          — Service liveness monitoring endpoint
+├── ip_debug.php        — Proxy IP diagnostic endpoint (protected by token)
+├── db.php              — PDO database connection (SSL for Aiven, direct for local)
 ├── crypto.php          — PBKDF2 key derivation + AES-256-GCM
 ├── lsb.php             — GD-based LSB embed/extract engine
 ├── prng.php            — Deterministic SHA-256 PRNG
@@ -267,33 +272,40 @@ steganography/
 ├── style.js            — Shared JS (grid animation, password toggle)
 ├── logo.png            — Application logo (cohesive neon aesthetic)
 ├── COLLEGE_DOCUMENTATION.md— Comprehensive project documentation
-├── .env                — Environment variables (SMTP configs)
+├── .env                — Environment variables (secrets, ignored by git)
+├── .env.example        — Configuration template with placeholders
 ├── composer.json       — Composer configuration
 └── README.md           — This file
 ```
 
 ---
 
-## Requirements
+## Deployment & Limits
 
-- **PHP** ≥ 8.0 with extensions: `gd`, `openssl`, `pdo_mysql`, `zip`, `zlib`, `fileinfo` (built-in by default)
-- **MySQL/MariaDB** for user accounts
-- **XAMPP** (or equivalent Apache stack) for local deployment
+### Resource Limits (Render Free Tier / 512 MB RAM)
+- **Cover Image Limit**: Max 20 MB; resolution capped at `MAX_IMAGE_PIXELS` (default 9,000,000 pixels, ~3000x3000).
+- **Secret Payload Limit**: Max 200 KB total secret data (configurable via `PAYLOAD_MAX_KB`, default 200) to keep 9 MP encode/decode memory usage below the 300 MB target.
+- **PHP Memory Limit**: `320M` (configured in `docker/php.ini`).
+
+### Target Infrastructure (Production)
+- **Runtime**: Docker `php:8.2-apache` on Render Free Tier (Port `10000`)
+- **Database**: Managed Aiven MySQL 8.4 (`Steganography`, SSL via `ca.pem`)
+- **Email Delivery**: Brevo Transactional Email API (HTTPS REST over port 443 — bypasses Render SMTP port blocks)
+- **Health Check**: `/health.php` endpoint for uptime monitoring
+
+### Local Development
+- **PHP** ≥ 8.2 with extensions: `gd`, `openssl`, `pdo_mysql`, `zip`, `zlib`, `fileinfo`
+- **MySQL/MariaDB** instance (local connections without SSL supported out-of-the-box)
+- **XAMPP** Apache stack or Docker
 - **Composer** dependencies: `phpmailer/phpmailer`
 
-### PHP Extensions Check
-```php
-php -m | grep -E "gd|openssl|pdo_mysql|zip|zlib|fileinfo"
+Run the repository root as the web root, matching Render:
+
+```powershell
+php -S 127.0.0.1:8000 -d upload_max_filesize=20M -d post_max_size=35M -d memory_limit=320M
 ```
 
-### Recommended `php.ini` Settings
-```ini
-file_uploads = On
-upload_max_filesize = 50M
-post_max_size = 55M
-memory_limit = 256M
-max_execution_time = 120
-```
+For local development, copy `.env.example` to `.env` and set `DB_HOST=127.0.0.1`, `DB_PORT=3306`, a local database name and user, `APP_ENV=local`, `MAIL_PROVIDER=log`, `EMAIL_VERIFICATION_REQUIRED=0`, and `APP_URL=http://127.0.0.1:8000`. When `EMAIL_VERIFICATION_REQUIRED=0`, accounts are immediately active, but anyone can register using an email address they do not control. Keep verification enabled (`1`, the default) in production.
 
 ---
 

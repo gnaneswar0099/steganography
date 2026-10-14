@@ -1,0 +1,34 @@
+# Version control
+.git/
+.github/
+
+# Secrets
+.env
+.env.*
+.env.example
+
+# Build dependencies
+vendor/
+
+# Local tooling & IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+node_modules/
+
+# Runtime / cache
+/uploads/*
+/tmp/*
+/cache/*
+
+# Azure-specific artifacts
+startup.sh
+oryx-manifest.toml
+.nginx/
+.user.ini
+database_schema.sql
+bin/

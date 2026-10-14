@@ -10,9 +10,9 @@ if (session_status() === PHP_SESSION_NONE) {
     $isSecure = app_is_https();
     session_set_cookie_params([
         'lifetime' => 7200,
-        'path' => '/',
-        'domain' => '',
-        'secure' => $isSecure,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => $isSecure,
         'httponly' => true,
         'samesite' => 'Strict'
     ]);
@@ -28,9 +28,14 @@ if (empty($_SESSION['csrf_token'])) {
 
 $errors = [];
 $success_msg = "";
+$emailVerificationRequired = app_email_verification_required();
 
 if (isset($_GET['reset']) && $_GET['reset'] === '1') {
     $success_msg = "Password updated successfully. Access system with new credentials.";
+}
+
+if (isset($_GET['verified']) && $_GET['verified'] === '1') {
+    $success_msg = "Account successfully verified! You may now sign in.";
 }
 
 // Redirect if already logged in
@@ -55,20 +60,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } else {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        // ── Rate-limit constants ───────────────────────────────────────────
-        $loginMaxAttempts = 10;   // max failures allowed
-        $loginWindowMin   = 15;   // sliding window in minutes
+        // Rate-limit constants
+        $loginMaxAttempts = 10;
+        $loginWindowMin   = 15;
         $loginLockoutMsg  = "Too many failed attempts. Access temporarily locked. Please try again later.";
 
         try {
-            // ── 1. Purge stale records (older than the window) ─────────────
-            // The value is an integer constant so concatenation is safe here.
+            // 1. Purge stale records older than window
             $pdo->prepare(
                 "DELETE FROM login_attempts
                  WHERE attempt_time < DATE_SUB(NOW(), INTERVAL " . (int)$loginWindowMin . " MINUTE)"
             )->execute();
 
-            // ── 2. Count recent failures for this IP OR email ──────────────
+            // 2.7 Opportunistic 30-day purge
+            if (random_int(1, 20) === 1) {
+                $pdo->exec("DELETE FROM login_attempts WHERE attempt_time < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+            }
+
+            // 2. Count recent failures for IP or email
             $stmt = $pdo->prepare(
                 "SELECT COUNT(*) FROM login_attempts
                  WHERE (ip_address = ? OR email = ?)
@@ -78,65 +87,53 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $recentFailures = (int) $stmt->fetchColumn();
 
             if ($recentFailures >= $loginMaxAttempts) {
-                // ── LOCKED ─────────────────────────────────────────────────
                 $errors[] = $loginLockoutMsg;
-
             } else {
-                // ── 3. Look up user and verify password ────────────────────
+                // 3. Look up user
                 $stmt = $pdo->prepare(
-                    "SELECT id, username, password_hash FROM users WHERE email = ?"
+                    "SELECT id, username, password_hash, email_verified FROM users WHERE email = ?"
                 );
                 $stmt->execute([$email]);
                 $user = $stmt->fetch();
 
-                // Prevent user enumeration timing attacks by always computing the hash
+                // Timing attack prevention: dummy verify if user does not exist
                 $dummyHash = '$2y$10$dummyHashDummyHashDummyHashDummyHas$';
                 $hashToVerify = $user ? $user['password_hash'] : $dummyHash;
                 $isValidPass = password_verify($password, $hashToVerify);
 
                 if ($user && $isValidPass) {
-                    // ── SUCCESS ────────────────────────────────────────────
-                    // Clear stored failures for this email and current IP so a
-                    // legitimate user is not kept locked out by stale records.
-                    $pdo->prepare(
-                        "DELETE FROM login_attempts WHERE email = ? OR ip_address = ?"
-                    )->execute([$email, $ip]);
+                    // C6: Check email verification status
+                    if ($emailVerificationRequired && (int)($user['email_verified'] ?? 0) !== 1) {
+                        $encodedEmail = urlencode($email);
+                        $errors[] = "Your email address has not been verified yet. Please check your inbox or <a href='resend_verification.php?email={$encodedEmail}' style='color:#00ffff;text-decoration:underline;'>request a new activation link</a>.";
+                    } else {
+                        // SUCCESS
+                        $pdo->prepare(
+                            "DELETE FROM login_attempts WHERE email = ? OR ip_address = ?"
+                        )->execute([$email, $ip]);
 
-                    session_regenerate_id(true); // Prevent session fixation
+                        session_regenerate_id(true); // A9: Prevent session fixation
 
-                    $_SESSION['user_id']       = $user['id'];
-                    $_SESSION['username']      = $user['username'];
-                    $_SESSION['last_activity'] = time();
+                        $_SESSION['user_id']       = $user['id'];
+                        $_SESSION['username']      = $user['username'];
+                        $_SESSION['last_activity'] = time();
 
-                    header("Location: home.php");
-                    exit;
-
+                        header("Location: home.php");
+                        exit;
+                    }
                 } else {
-                    // ── FAILURE — log attempt then show generic error ───────
+                    // FAILURE
                     $pdo->prepare(
                         "INSERT INTO login_attempts (email, ip_address, attempt_time)
                          VALUES (?, ?, NOW())"
                     )->execute([$email, $ip]);
 
-                    // How many attempts remain before lockout?
-                    $remaining = $loginMaxAttempts - ($recentFailures + 1);
-
-                    if ($remaining <= 0) {
-                        $errors[] = $loginLockoutMsg;
-                    } elseif ($remaining <= 3) {
-                        // Warn when getting close so the user knows
-                        $errors[] = "Invalid access credentials. Warning: {$remaining} attempt(s) remaining before temporary lockout.";
-                    } else {
-                        $errors[] = "Invalid access credentials.";
-                    }
-
-                    sleep(1); // Secondary delay — still costs 1 s per non-locked attempt
+                    $errors[] = "Invalid credentials.";
                 }
             }
-
         } catch (PDOException $e) {
             error_log("Login Error: " . $e->getMessage());
-            $errors[] = "System authentication error.";
+            $errors[] = "Authentication service temporarily unavailable.";
         }
     }
 }
@@ -157,17 +154,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 
 <body>
+    <div class="grid-container" id="gridContainer"></div>
     <?php
     $isLoggedIn = false;
     $username   = '';
     $activeNav  = 'login';
     ?>
-    <div class="grid-container" id="gridContainer"></div>
     <?php include 'nav.php'; ?>
 
-
     <div class="auth-login-container">
-        <!-- Decoration -->
         <div class="corner-decoration top-left"></div>
         <div class="corner-decoration top-right"></div>
         <div class="corner-decoration bottom-left"></div>
@@ -175,33 +170,41 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <div class="auth-header">
             <div class="auth-scan-line"></div>
-            <h1>LOGIN</h1>
-            <p class="auth-status-text">System Ready</p>
+            <h1>Authentication</h1>
+            <p class="auth-status-text">Enter credentials to establish secure session</p>
         </div>
-
-        <?php if (!empty($success_msg)): ?>
-            <div class="auth-success-msg">
-                <span><i class="fa-solid fa-circle-check"></i> <?php echo htmlspecialchars($success_msg); ?></span>
-            </div>
-        <?php endif; ?>
 
         <?php if (!empty($errors)): ?>
             <div class="auth-error-msg">
                 <?php foreach ($errors as $error): ?>
-                    <span><i class="fa-solid fa-triangle-exclamation"></i> <?php echo htmlspecialchars($error); ?></span>
+                    <span>
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <?= $error ?>
+                    </span>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
-        <form id="loginFormPHP" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
-            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+        <?php if (!empty($success_msg)): ?>
+            <div class="auth-error-msg" style="color: #00ffcc; border-color: #00ffcc; background: rgba(0, 255, 204, 0.1);">
+                <span>
+                    <i class="fa-solid fa-circle-check"></i>
+                    <?= htmlspecialchars($success_msg) ?>
+                </span>
+            </div>
+        <?php endif; ?>
+
+        <form method="POST" action="login.php" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+
             <div class="auth-form-group">
-                <label class="auth-form-label">User Identification</label>
+                <label class="auth-form-label">Email</label>
                 <div class="auth-input-wrapper">
-                    <i class="fa-solid fa-user auth-field-icon"></i>
-                    <input type="email" name="email" class="auth-input-field" placeholder="Enter email address"
-                        value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required
-                        autocomplete="email">
+                    <i class="fa-solid fa-envelope auth-field-icon"></i>
+                    <input type="email" name="email" class="auth-input-field"
+                           placeholder="Enter your email" required
+                           value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                           autocomplete="email">
                 </div>
             </div>
 
@@ -210,43 +213,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <div class="auth-input-wrapper">
                     <i class="fa-solid fa-lock auth-field-icon"></i>
                     <input type="password" name="password" id="passwordField" class="auth-input-field"
-                        placeholder="Enter password" required autocomplete="off">
+                           placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="current-password">
                     <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
                 </div>
             </div>
 
-            <div class="auth-checkbox-group" style="justify-content: flex-end;">
-                <a href="request_reset.php" class="auth-forgot-link">Forgot Password?</a>
+            <div class="auth-remember-row">
+                <a href="request_reset.php" class="auth-forgot-link">Forgot password?</a>
             </div>
 
             <button type="submit" class="auth-submit-btn">
-                Initialize Login
+                AUTHENTICATE
             </button>
         </form>
 
         <div class="auth-register-link">
-            <a href="register.php">CREATE NEW ACCOUNT →</a>
+            Don't have an account? <a href="register.php">Create identity</a>
         </div>
-
     </div>
 
     <script src="style.js"></script>
-    <script>
-        document.getElementById('loginFormPHP').addEventListener('submit', function (e) {
-            if (!this.checkValidity()) {
-                return;
-            }
-            e.preventDefault(); // Stop immediate submission to play animation
-            document.getElementById('processingOverlay').classList.add('visible');
-            document.body.style.overflow = 'hidden';
-
-            const btn = this.querySelector('button[type="submit"]');
-            if (btn) btn.disabled = true;
-
-            // Submit immediately
-            this.submit();
-        });
-    </script>
 </body>
-
 </html>

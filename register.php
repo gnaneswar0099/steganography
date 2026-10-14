@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/app_config.php';
 require_once 'db.php';
+require_once 'mailer.php';
 
 // Start Session (Strict)
 if (session_status() === PHP_SESSION_NONE) {
@@ -10,57 +11,51 @@ if (session_status() === PHP_SESSION_NONE) {
     $isSecure = app_is_https();
     session_set_cookie_params([
         'lifetime' => 7200,
-        'path' => '/',
-        'domain' => '',
-        'secure' => $isSecure,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => $isSecure,
         'httponly' => true,
         'samesite' => 'Strict'
     ]);
     session_start();
 }
 
-// Generate CSRF Token if not exists
+// Generate CSRF Token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 $errors = [];
+$registered_success = false;
 $success_msg = "";
-
-// Table creation logic removed to prevent 'CREATE command denied' errors.
-// The application assumes the 'users' table already exists.
+$emailVerificationRequired = app_email_verification_required();
 
 // Handle Form Submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // 0. CSRF Check
+    // CSRF Check
     if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         include 'error_session.php';
         exit;
     }
 
-    // 1. Sanitization
-    $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $username         = trim($_POST['username'] ?? '');
+    $email            = trim($_POST['email'] ?? '');
+    $password         = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
 
-    // 2. Validation
-
-    // Username: Alphanumeric, 3-50 chars
+    // Validation
     if (empty($username)) {
         $errors[] = "Username is required.";
     } elseif (!preg_match('/^[a-zA-Z0-9_]{3,50}$/', $username)) {
         $errors[] = "Username must be 3-50 characters and alphanumeric.";
     }
 
-    // Email
     if (empty($email)) {
         $errors[] = "Email is required.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    } elseif (strlen($email) > 255 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Invalid email format.";
     }
 
-    // Password Complexity
     if (empty($password)) {
         $errors[] = "Password is required.";
     } else {
@@ -81,47 +76,87 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     }
 
-    // Confirm Password
     if ($password !== $confirm_password) {
         $errors[] = "Passwords do not match.";
     }
 
-    // 3. Database Checks (Prepare for Duplicate Entry)
     if (empty($errors)) {
         try {
+            // Timing attack mitigation: always compute hash
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
             // Check existence
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Compute the password hash regardless of whether the user exists.
-            // This prevents attackers from measuring server response times to
-            // guess if an email address is already registered. (Timing Attack Mitigation)
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
             if ($existing) {
                 $errors[] = "An account with this email already exists. Please log in or reset your password.";
             } else {
-                // 4. Secure Insertion
-                $insertStmt = $pdo->prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)");
-                $insertStmt->execute([$username, $email, $hashed_password]);
+                $token = $emailVerificationRequired ? bin2hex(random_bytes(32)) : '';
+                $tokenHash = $emailVerificationRequired ? hash('sha256', $token) : '';
+                $emailVerified = $emailVerificationRequired ? 0 : 1;
 
-                // AUTO LOGIN
-                $userId = $pdo->lastInsertId();
-                session_regenerate_id(true);
-                $_SESSION['user_id'] = $userId;
-                $_SESSION['username'] = $username;
-                $_SESSION['last_activity'] = time();
+                $pdo->beginTransaction();
 
-                $success_msg = "Registration successful. Initializing session...";
-                // Redirect on success
-                header("Location: home.php");
-                exit;
+                $insertStmt = $pdo->prepare(
+                    "INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, ?)"
+                );
+                $insertStmt->execute([$username, $email, $hashed_password, $emailVerified]);
+
+                if ($emailVerificationRequired) {
+                    $pdo->prepare("DELETE FROM email_verifications WHERE email = ?")->execute([$email]);
+                    $verifyStmt = $pdo->prepare(
+                        "INSERT INTO email_verifications (email, token_hash, expires_at)
+                         VALUES (?, ?, NOW() + INTERVAL 24 HOUR)"
+                    );
+                    $verifyStmt->execute([$email, $tokenHash]);
+                }
+
+                $pdo->commit();
+
+                if ($emailVerificationRequired) {
+                // Build activation URL
+                $isSecure  = app_is_https();
+                $protocol  = $isSecure ? "https" : "http";
+                $base_dir  = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+                $activationLink = $protocol . "://" . $_SERVER['HTTP_HOST'] . $base_dir . "/verify_email.php?token=" . urlencode($token);
+
+                // Send email
+                $subject  = "Activate your Steganography Account";
+                $htmlBody = "Hello " . htmlspecialchars($username, ENT_QUOTES, 'UTF-8') . ",<br><br>"
+                          . "Thank you for creating an account. Please click the button or link below to verify your email and activate your account:<br><br>"
+                          . "<a href='" . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:10px 20px;background:#00ffff;color:#000;font-weight:bold;text-decoration:none;border-radius:4px;'>ACTIVATE ACCOUNT</a><br><br>"
+                          . "Or copy and paste this link into your browser:<br>"
+                          . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "<br><br>"
+                          . "This link will expire in 24 hours.<br><br>"
+                          . "If you did not sign up for this account, please ignore this email.";
+
+                $textBody = "Hello {$username},\n\n"
+                          . "Thank you for creating an account. Please visit the link below to verify your email:\n\n"
+                          . "{$activationLink}\n\n"
+                          . "This link will expire in 24 hours.\n\n"
+                          . "If you did not sign up, please ignore this message.";
+
+                send_system_email($email, $subject, $htmlBody, $textBody);
+
+                    $success_msg = "Registration successful! A verification link has been dispatched to your email address. Please click the link to activate your account before logging in.";
+                } else {
+                    $success_msg = "Registration successful! You may now sign in.";
+                }
+
+                $registered_success = true;
             }
         } catch (PDOException $e) {
-            // Log real error, show generic
-            error_log("Registration Error: " . $e->getMessage());
-            $errors[] = "A system error occurred during registration.";
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e->getCode() === '23000') {
+                $errors[] = "An account with this email already exists.";
+            } else {
+                error_log("Registration Error: " . $e->getMessage());
+                $errors[] = "A system error occurred during registration.";
+            }
         }
     }
 }
@@ -133,7 +168,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
-    <!-- CSS Dependencies -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
         integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -143,7 +177,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 
 <body>
-    <!-- Background Effects -->
     <div class="grid-container" id="gridContainer"></div>
     <?php
     $isLoggedIn = false;
@@ -153,217 +186,109 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <?php include 'nav.php'; ?>
 
     <div class="auth-login-container">
-        <!-- Corner Decorations -->
         <div class="corner-decoration top-left"></div>
         <div class="corner-decoration top-right"></div>
         <div class="corner-decoration bottom-left"></div>
         <div class="corner-decoration bottom-right"></div>
 
-        <!-- Header -->
         <div class="auth-header">
             <div class="auth-scan-line"></div>
-            <h1>REGISTER</h1>
-            <p class="auth-status-text">New User Detected</p>
+            <h1>Create Identity</h1>
+            <p class="auth-status-text">Initialize new secure user</p>
         </div>
 
-        <!-- Feedback Messages -->
         <?php if (!empty($errors)): ?>
             <div class="auth-error-msg">
                 <?php foreach ($errors as $error): ?>
-
-                    <div class="auth-err-item"><i class="fa-solid fa-triangle-exclamation"></i>
-                        <?php echo htmlspecialchars($error); ?></div>
+                    <span>
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <?= htmlspecialchars($error) ?>
+                    </span>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
-        <?php if ($success_msg): ?>
-            <div class="auth-success-msg">
-                <p><i class="fa-solid fa-check-circle"></i> <?php echo htmlspecialchars($success_msg); ?></p>
+        <?php if ($registered_success): ?>
+            <div class="auth-error-msg" style="color: #00ffcc; border-color: #00ffcc; background: rgba(0, 255, 204, 0.1); margin-bottom: 25px;">
+                <span>
+                    <i class="fa-solid fa-envelope-circle-check"></i>
+                    <?= htmlspecialchars($success_msg) ?>
+                </span>
+            </div>
+            <div style="text-align: center; margin-top: 25px;">
+                <a href="login.php" class="auth-submit-btn" style="text-decoration: none; display: inline-block;">
+                    PROCEED TO LOGIN &nbsp;<i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="auth-register-link" style="margin-top: 20px;">
+                Didn't get the email? <a href="resend_verification.php?email=<?= urlencode($email) ?>">Resend link</a>
+            </div>
+        <?php else: ?>
+            <form method="POST" action="register.php" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+
+                <div class="auth-form-group">
+                    <label class="auth-form-label">Username</label>
+                    <div class="auth-input-wrapper">
+                        <i class="fa-solid fa-user auth-field-icon"></i>
+                        <input type="text" name="username" class="auth-input-field"
+                            placeholder="Alphanumeric, 3-50 chars" required
+                            value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+                            autocomplete="username" maxlength="50">
+                    </div>
+                </div>
+
+                <div class="auth-form-group">
+                    <label class="auth-form-label">Email</label>
+                    <div class="auth-input-wrapper">
+                        <i class="fa-solid fa-envelope auth-field-icon"></i>
+                        <input type="email" name="email" class="auth-input-field"
+                            placeholder="user@domain.com" required
+                            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                            autocomplete="email" maxlength="255">
+                    </div>
+                </div>
+
+                <div class="auth-form-group">
+                    <label class="auth-form-label">Password</label>
+                    <div class="auth-input-wrapper">
+                        <i class="fa-solid fa-lock auth-field-icon"></i>
+                        <input type="password" name="password" id="passwordField" class="auth-input-field"
+                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="new-password">
+                        <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
+                    </div>
+                    <div class="auth-validation-feedback" id="passwordRules">
+                        <span id="rule-length">â— At least 8 characters</span>
+                        <span id="rule-upper">â— At least One Uppercase Letter</span>
+                        <span id="rule-lower">â— At least One Lowercase Letter</span>
+                        <span id="rule-number">â— At least One Number</span>
+                        <span id="rule-special">â— At least One Special Symbol</span>
+                    </div>
+                </div>
+
+                <div class="auth-form-group">
+                    <label class="auth-form-label">Confirm Password</label>
+                    <div class="auth-input-wrapper">
+                        <i class="fa-solid fa-shield-halved auth-field-icon"></i>
+                        <input type="password" name="confirm_password" id="confirmPasswordField" class="auth-input-field"
+                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="new-password">
+                        <i class="fa-solid fa-eye auth-toggle-icon" id="toggleConfirmPassword"></i>
+                    </div>
+                    <div id="matchFeedback" class="auth-match-feedback"></div>
+                </div>
+
+                <button type="submit" class="auth-submit-btn">
+                    REGISTER IDENTITY
+                </button>
+            </form>
+
+            <div class="auth-register-link">
+                Already registered? <a href="login.php">Authenticate</a>
             </div>
         <?php endif; ?>
-
-        <!-- Registration Form -->
-
-        <form id="registerFormPHP" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
-            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-            <!-- Turn off autocomplete for security -->
-            <input type="hidden" name="action" value="register">
-
-            <div class="auth-form-group">
-                <label class="auth-form-label">Username</label>
-                <div class="auth-input-wrapper">
-                    <i class="fa-solid fa-user-astronaut auth-field-icon"></i>
-                    <input type="text" name="username" class="auth-input-field" placeholder="Alphanumeric ID"
-                        value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>"
-                        required autocomplete="off">
-                </div>
-            </div>
-
-            <div class="auth-form-group">
-                <label class="auth-form-label">Email</label>
-                <div class="auth-input-wrapper">
-                    <i class="fa-solid fa-envelope auth-field-icon"></i>
-                    <input type="email" name="email" class="auth-input-field" placeholder="Secure email address"
-                        value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required
-                        autocomplete="email">
-                </div>
-            </div>
-
-            <div class="auth-form-group">
-                <label class="auth-form-label">Create Password</label>
-                <div class="auth-input-wrapper">
-                    <i class="fa-solid fa-lock auth-field-icon"></i>
-                    <input type="password" name="password" id="passwordField" class="auth-input-field"
-                        placeholder="Create password" required autocomplete="new-password">
-                    <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
-                </div>
-
-                <div class="auth-validation-feedback" id="passwordRules">
-                    <span id="rule-length">● At least 8 characters</span>
-                    <span id="rule-upper">● At least One Uppercase Letter</span>
-                    <span id="rule-lower">● At least One Lowercase Letter</span>
-                    <span id="rule-number">● At least One Number</span>
-                    <span id="rule-special">● At least One Special Symbol</span>
-                </div>
-            </div>
-
-            <div class="auth-form-group">
-                <label class="auth-form-label">Confirm Password</label>
-                <div class="auth-input-wrapper">
-                    <i class="fa-solid fa-shield-halved auth-field-icon"></i>
-                    <input type="password" name="confirm_password" id="confirmPasswordField" class="auth-input-field"
-                        placeholder="Confirm password" required autocomplete="new-password">
-                    <i class="fa-solid fa-eye auth-toggle-icon" id="toggleConfirmPassword"></i>
-                </div>
-                <div id="matchFeedback" class="auth-match-feedback"></div>
-            </div>
-            <button type="submit" class="auth-submit-btn" id="submitBtn">
-                Register
-            </button>
-        </form>
-
-        <div class="auth-divider">
-            <span class="auth-divider-text">ALREADY HAVE CLEARANCE?</span>
-        </div>
-
-        <div class="auth-register-link">
-            <a href="login.php">RETURN TO LOGIN →</a>
-        </div>
     </div>
 
-    <!-- Scripts -->
     <script src="style.js"></script>
-    <script>
-        const passwordInput = document.getElementById('passwordField');
-        const confirmInput = document.getElementById('confirmPasswordField');
-        const matchFeedback = document.getElementById('matchFeedback');
-        const passwordRules = document.getElementById('passwordRules');
-        const submitBtn = document.getElementById('submitBtn');
-
-        const rules = {
-            length:  { el: document.getElementById('rule-length'),  regex: /.{8,}/,   label: 'At least 8 characters' },
-            upper:   { el: document.getElementById('rule-upper'),   regex: /[A-Z]/,   label: 'At least One Uppercase Letter' },
-            lower:   { el: document.getElementById('rule-lower'),   regex: /[a-z]/,   label: 'At least One Lowercase Letter' },
-            number:  { el: document.getElementById('rule-number'),  regex: /[0-9]/,   label: 'At least One Number' },
-            special: { el: document.getElementById('rule-special'), regex: /[\W_]/,   label: 'At least One Special Symbol' }
-        };
-
-        // Show validation on focus
-        passwordInput.addEventListener('focus', () => {
-            passwordRules.style.display = 'flex';
-        });
-
-        // Hide validation on blur
-        passwordInput.addEventListener('blur', () => {
-            passwordRules.style.display = 'none';
-        });
-
-        function validatePassword() {
-            const val = passwordInput.value;
-
-            // Auto-show if typing happens
-            if (val.length > 0) passwordRules.style.display = 'flex';
-
-            let allValid = true;
-
-            for (const key in rules) {
-                const rule = rules[key];
-                if (rule.regex.test(val)) {
-                    rule.el.classList.remove('auth-invalid-rule');
-                    rule.el.classList.add('auth-valid-rule');
-                    rule.el.innerHTML = '<i class="fa-solid fa-check"></i> ' + rule.label;
-                } else {
-                    rule.el.classList.remove('auth-valid-rule');
-                    rule.el.classList.add('auth-invalid-rule');
-                    rule.el.innerHTML = '● ' + rule.label;
-                    allValid = false;
-                }
-            }
-
-            validateMatch();
-            return allValid;
-        }
-
-        function validateMatch() {
-            const pass = passwordInput.value;
-            const confirm = confirmInput.value;
-
-            if (!confirm) {
-                matchFeedback.textContent = '';
-                return false;
-            }
-
-            if (pass === confirm) {
-                matchFeedback.textContent = 'Passwords Match';
-                matchFeedback.style.color = '#00ff88';
-                return true;
-            } else {
-                matchFeedback.textContent = 'Passwords Do Not Match';
-                matchFeedback.style.color = '#ff4444';
-                return false;
-            }
-        }
-
-        passwordInput.addEventListener('input', validatePassword);
-        confirmInput.addEventListener('input', validateMatch);
-
-        // Block submit if password requirements not met
-        document.getElementById('registerFormPHP').addEventListener('submit', function (e) {
-            if (!this.checkValidity()) {
-                return;
-            }
-            const isPassValid = validatePassword();
-            const isMatchValid = validateMatch();
-
-            if (!isPassValid || !isMatchValid) {
-                e.preventDefault();
-                // Show inline error instead of alert()
-                let inlineErr = document.getElementById('js-inline-error');
-                if (!inlineErr) {
-                    inlineErr = document.createElement('div');
-                    inlineErr.id = 'js-inline-error';
-                    inlineErr.className = 'auth-error-msg';
-                    inlineErr.style.marginBottom = '8px';
-                    this.insertBefore(inlineErr, this.firstChild);
-                }
-                if (!isPassValid) {
-                    inlineErr.innerHTML = '<span><i class="fa-solid fa-triangle-exclamation"></i> Please ensure all password requirements are met.</span>';
-                } else {
-                    inlineErr.innerHTML = '<span><i class="fa-solid fa-triangle-exclamation"></i> Passwords do not match.</span>';
-                }
-                inlineErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                e.preventDefault(); // Stop immediate submission to play animation
-                document.getElementById('processingOverlay').classList.add('visible');
-                document.body.style.overflow = 'hidden';
-                if (submitBtn) submitBtn.disabled = true;
-
-                // Submit immediately
-                this.submit();
-            }
-        });
-    </script>
+    <script src="verify_reset.js"></script>
 </body>
-
 </html>

@@ -2,15 +2,31 @@
 // ===== logout.php =====
 declare(strict_types=1);
 
-// Initialize session
+require_once __DIR__ . '/app_config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+// A8: Logout is strictly POST with CSRF validation
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    exit('Method Not Allowed: Logout requires POST.');
+}
+
+$sessionToken = $_SESSION['csrf_token'] ?? '';
+$postToken    = $_POST['csrf_token'] ?? '';
+
+if (empty($sessionToken) || empty($postToken) || !hash_equals($sessionToken, $postToken)) {
+    http_response_code(403);
+    exit('Invalid CSRF token.');
 }
 
 // Unset all session variables
 $_SESSION = [];
 
-// Destroy the session cookie
+// Destroy session cookie
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(
@@ -24,10 +40,7 @@ if (ini_get("session.use_cookies")) {
     );
 }
 
-// Destroy session storage
 session_destroy();
 
-// Redirect
 header("Location: home.php");
 exit;
-?>

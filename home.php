@@ -42,6 +42,7 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION['csrf_token'];
+$payloadMaxKb = app_payload_max_kb();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -251,7 +252,7 @@ $csrf_token = $_SESSION['csrf_token'];
                         </div>
 
                         <div class="input-group" id="group-secret" style="margin-bottom: 15px;">
-                            <label>Secret Data (File to hide)</label>
+                            <label>Secret Data (File to hide) <span style="font-size: 0.85em; color: rgba(0, 255, 255, 0.7);">(Max <?= $payloadMaxKb ?> KB total)</span></label>
                             <input type="file" name="secret_file" id="input-secret" multiple>
 
                             <div class="preview-container" id="preview-secret" style="display: none;">
@@ -891,6 +892,12 @@ $csrf_token = $_SESSION['csrf_token'];
 
             if (secretFilesArray.length > 15) {
                 showToast("You can only hide a maximum of 15 secret files at once. Please remove some files.");
+                return;
+            }
+
+            const totalSecretBytes = secretFilesArray.reduce((acc, f) => acc + (f.size || 0), 0);
+            if (totalSecretBytes > <?= $payloadMaxKb ?> * 1024) {
+                showToast("Total secret size is limited to <?= $payloadMaxKb ?> KB on this demo.");
                 return;
             }
 
