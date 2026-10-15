@@ -2,6 +2,8 @@
 // ===== register.php =====
 declare(strict_types=1);
 require_once __DIR__ . '/app_config.php';
+
+header('Content-Type: text/html; charset=UTF-8');
 require_once 'db.php';
 require_once 'mailer.php';
 
@@ -167,7 +169,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+    <title>Create Account | Steganography</title>
+    <meta name="description" content="Create a secure Steganography account.">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
         integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -198,7 +202,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
 
         <?php if (!empty($errors)): ?>
-            <div class="auth-error-msg">
+            <div class="auth-error-msg" role="alert">
                 <?php foreach ($errors as $error): ?>
                     <span>
                         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -220,18 +224,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     PROCEED TO LOGIN &nbsp;<i class="fa-solid fa-arrow-right"></i>
                 </a>
             </div>
-            <div class="auth-register-link" style="margin-top: 20px;">
-                Didn't get the email? <a href="resend_verification.php?email=<?= urlencode($email) ?>">Resend link</a>
-            </div>
+            <?php if ($emailVerificationRequired): ?>
+                <div class="auth-register-link" style="margin-top: 20px;">
+                    Didn't get the email? <a href="resend_verification.php?email=<?= urlencode($email) ?>">Resend link</a>
+                </div>
+            <?php endif; ?>
         <?php else: ?>
-            <form method="POST" action="register.php" autocomplete="off">
+            <form id="registerForm" method="POST" action="register.php" autocomplete="on">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
 
                 <div class="auth-form-group">
-                    <label class="auth-form-label">Username</label>
+                    <label class="auth-form-label" for="usernameField">Username</label>
                     <div class="auth-input-wrapper">
                         <i class="fa-solid fa-user auth-field-icon"></i>
-                        <input type="text" name="username" class="auth-input-field"
+                        <input type="text" name="username" id="usernameField" class="auth-input-field"
                             placeholder="Alphanumeric, 3-50 chars" required
                             value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
                             autocomplete="username" maxlength="50">
@@ -239,10 +245,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
 
                 <div class="auth-form-group">
-                    <label class="auth-form-label">Email</label>
+                    <label class="auth-form-label" for="emailField">Email</label>
                     <div class="auth-input-wrapper">
                         <i class="fa-solid fa-envelope auth-field-icon"></i>
-                        <input type="email" name="email" class="auth-input-field"
+                        <input type="email" name="email" id="emailField" class="auth-input-field"
                             placeholder="user@domain.com" required
                             value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                             autocomplete="email" maxlength="255">
@@ -250,29 +256,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
 
                 <div class="auth-form-group">
-                    <label class="auth-form-label">Password</label>
+                    <label class="auth-form-label" for="passwordField">Password</label>
                     <div class="auth-input-wrapper">
                         <i class="fa-solid fa-lock auth-field-icon"></i>
                         <input type="password" name="password" id="passwordField" class="auth-input-field"
-                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="new-password">
-                        <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
+                            placeholder="Create a password" required autocomplete="new-password">
+                        <button type="button" class="auth-toggle-icon" id="togglePassword" aria-label="Show password" aria-controls="passwordField" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                     <div class="auth-validation-feedback" id="passwordRules">
-                        <span id="rule-length">â— At least 8 characters</span>
-                        <span id="rule-upper">â— At least One Uppercase Letter</span>
-                        <span id="rule-lower">â— At least One Lowercase Letter</span>
-                        <span id="rule-number">â— At least One Number</span>
-                        <span id="rule-special">â— At least One Special Symbol</span>
+                        <span id="rule-length">○ At least 8 characters</span>
+                        <span id="rule-upper">○ At least one uppercase letter</span>
+                        <span id="rule-lower">○ At least one lowercase letter</span>
+                        <span id="rule-number">○ At least one number</span>
+                        <span id="rule-special">○ At least one special symbol</span>
                     </div>
                 </div>
 
                 <div class="auth-form-group">
-                    <label class="auth-form-label">Confirm Password</label>
+                    <label class="auth-form-label" for="confirmPasswordField">Confirm Password</label>
                     <div class="auth-input-wrapper">
                         <i class="fa-solid fa-shield-halved auth-field-icon"></i>
                         <input type="password" name="confirm_password" id="confirmPasswordField" class="auth-input-field"
-                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="new-password">
-                        <i class="fa-solid fa-eye auth-toggle-icon" id="toggleConfirmPassword"></i>
+                            placeholder="Confirm your password" required autocomplete="new-password">
+                        <button type="button" class="auth-toggle-icon" id="toggleConfirmPassword" aria-label="Show password" aria-controls="confirmPasswordField" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                     <div id="matchFeedback" class="auth-match-feedback"></div>
                 </div>

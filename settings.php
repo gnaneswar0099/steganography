@@ -422,8 +422,14 @@ foreach ($alerts as $a) { $openTab = $a['section']; break; }
         cursor: pointer;
         transition: color 0.2s;
         z-index: 2;
+        width: 44px;
+        height: 44px;
+        border: 0;
+        background: transparent;
+        padding: 0;
     }
     .settings-toggle-icon:hover { color: #00ffff; }
+    .settings-toggle-icon:focus-visible { outline: 3px solid #00ff88; outline-offset: 2px; }
 
     /* Buttons */
     .settings-btn {
@@ -662,7 +668,7 @@ foreach ($alerts as $a) { $openTab = $a['section']; break; }
                                 <input type="password" id="current_password" name="current_password"
                                        class="settings-input" placeholder="Enter your current password"
                                        autocomplete="current-password" required />
-                                <i class="fa-solid fa-eye settings-toggle-icon" data-target="current_password"></i>
+                                <button type="button" class="settings-toggle-icon" data-target="current_password" aria-label="Show password" aria-controls="current_password" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                             </div>
                         </div>
 
@@ -672,7 +678,7 @@ foreach ($alerts as $a) { $openTab = $a['section']; break; }
                                 <input type="password" id="new_password" name="new_password"
                                        class="settings-input" placeholder="Create a strong new password"
                                        autocomplete="new-password" required />
-                                <i class="fa-solid fa-eye settings-toggle-icon" data-target="new_password"></i>
+                                <button type="button" class="settings-toggle-icon" data-target="new_password" aria-label="Show password" aria-controls="new_password" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                             </div>
                             <div id="passwordRules">
                                 <span id="rule-length"  style="color:rgba(255,255,255,0.38);">&#9679; At least 8 characters</span>
@@ -689,7 +695,7 @@ foreach ($alerts as $a) { $openTab = $a['section']; break; }
                                 <input type="password" id="confirm_password" name="confirm_password"
                                        class="settings-input" placeholder="Repeat your new password"
                                        autocomplete="new-password" required />
-                                <i class="fa-solid fa-eye settings-toggle-icon" data-target="confirm_password"></i>
+                                <button type="button" class="settings-toggle-icon" data-target="confirm_password" aria-label="Show password" aria-controls="confirm_password" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                             </div>
                             <div id="pw-match-msg"></div>
                         </div>
@@ -743,7 +749,7 @@ foreach ($alerts as $a) { $openTab = $a['section']; break; }
                         <input type="password" id="delete_confirm_password" name="delete_confirm_password"
                                class="settings-input" placeholder="Enter your password to confirm"
                                autocomplete="current-password" required />
-                        <i class="fa-solid fa-eye settings-toggle-icon" data-target="delete_confirm_password"></i>
+                        <button type="button" class="settings-toggle-icon" data-target="delete_confirm_password" aria-label="Show password" aria-controls="delete_confirm_password" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                 </div>
                 <div class="modal-actions">
@@ -787,8 +793,13 @@ foreach ($alerts as $a) { $openTab = $a['section']; break; }
             if (!input) return;
             var isPass = input.type === 'password';
             input.type = isPass ? 'text' : 'password';
-            icon.classList.toggle('fa-eye',      !isPass);
-            icon.classList.toggle('fa-eye-slash',  isPass);
+            var glyph = icon.querySelector('i');
+            if (glyph) {
+                glyph.classList.toggle('fa-eye', !isPass);
+                glyph.classList.toggle('fa-eye-slash', isPass);
+            }
+            icon.setAttribute('aria-pressed', String(isPass));
+            icon.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
         });
     });
 

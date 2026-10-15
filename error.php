@@ -1,12 +1,15 @@
 <?php
 declare(strict_types=1);
 
+header('Content-Type: text/html; charset=UTF-8');
+
 // Determine what kind of error to display
 $errorCode = $_GET['code'] ?? '404';
-$errorCode = in_array($errorCode, ['400', '403', '404', '405', '500', '503'], true) ? $errorCode : '404';
+$errorCode = in_array($errorCode, ['400', '401', '403', '404', '405', '500', '503'], true) ? $errorCode : '404';
 
 $errorMessages = [
     '400' => ['title' => 'BAD REQUEST', 'msg' => 'The request could not be understood by the server.'],
+    '401' => ['title' => 'AUTHENTICATION REQUIRED', 'msg' => 'Please sign in before accessing this resource.'],
     '403' => ['title' => 'ACCESS DENIED', 'msg' => 'You do not have permission to access this resource.'],
     '404' => ['title' => 'NOT FOUND', 'msg' => 'The requested file or resource does not exist.'],
     '405' => ['title' => 'METHOD NOT ALLOWED', 'msg' => 'The HTTP method used is not permitted for this endpoint.'],
@@ -23,6 +26,8 @@ http_response_code((int) $errorCode);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <title>Error
         <?php echo htmlspecialchars($errorCode); ?> —
         <?php echo htmlspecialchars($info['title']); ?>
@@ -44,7 +49,9 @@ http_response_code((int) $errorCode);
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 20px;
             position: relative;
             color: #fff;
         }
@@ -335,6 +342,24 @@ http_response_code((int) $errorCode);
             letter-spacing: 2px;
             text-transform: uppercase;
         }
+
+        @media (max-width: 480px) {
+            .error-card {
+                padding: 36px 20px 28px;
+            }
+
+            .status-row {
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
     </style>
 </head>
 
@@ -375,11 +400,8 @@ http_response_code((int) $errorCode);
         </div>
 
         <div class="btn-group">
-            <a href="home.php" class="btn btn-primary">
+            <a href="/home.php" class="btn btn-primary">
                 <i class="fa-solid fa-house"></i> Return Home
-            </a>
-            <a href="javascript:history.back()" class="btn btn-secondary">
-                <i class="fa-solid fa-arrow-left"></i> Go Back
             </a>
         </div>
 

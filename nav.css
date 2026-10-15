@@ -121,10 +121,17 @@ body { padding-top: 90px; }
     transition: border-color 0.25s, box-shadow 0.25s;
     position: relative;
     user-select: none;
+    appearance: none;
 }
 .nav-user-pill:hover {
     border-color: #00ffff;
     box-shadow: 0 0 14px rgba(0,255,255,0.25);
+}
+.nav-user-pill:focus-visible,
+.nav-btn:focus-visible,
+.nav-dropdown-item:focus-visible {
+    outline: 3px solid #00ff88;
+    outline-offset: 3px;
 }
 .nav-chevron { transition: transform 0.3s ease; font-size: 0.75rem; }
 .nav-chevron.open { transform: rotate(180deg); }

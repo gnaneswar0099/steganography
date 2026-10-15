@@ -416,6 +416,11 @@ body.home-page {
   resize: vertical;
 }
 
+.input-group input[type="password"]::placeholder {
+  color: rgba(0, 255, 255, 0.65);
+  opacity: 1;
+}
+
 .input-group input:focus,
 .input-group textarea:focus,
 .input-field:focus {
@@ -569,16 +574,23 @@ body.home-page {
 .toggle-icon {
   position: absolute;
   right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #00ffff;
   font-size: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
-  z-index: 2;
+    z-index: 2;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .toggle-icon:hover {
   color: #00ff88;
-  transform: scale(1.2);
+  transform: translateY(-50%) scale(1.2);
 }
 
 /* ADJUST INPUT PADDING IF ICON IS PRESENT */
@@ -889,6 +901,10 @@ body.home-page {
   100% {
     top: 100%;
   }
+}
+.toggle-icon:focus-visible {
+  outline: 3px solid #00ff88;
+  outline-offset: 2px;
 }
 /* TOAST NOTIFICATIONS */
 .toast-container {

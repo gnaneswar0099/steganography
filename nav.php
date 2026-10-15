@@ -1,6 +1,6 @@
 <?php
 // ===== nav.php =====
-// Shared navigation bar â€” included by every page.
+// Shared navigation bar - included by every page.
 // BLOCK DIRECT ACCESS
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     http_response_code(403);
@@ -41,12 +41,12 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
             </a>
             <!-- User pill + dropdown -->
             <div class="nav-dropdown-wrap">
-                <div class="nav-user-pill" id="navUserPill">
+                <button type="button" class="nav-user-pill" id="navUserPill" aria-expanded="false" aria-controls="navDropdown">
                     <i class="fa-solid fa-user-astronaut"></i>
                     <span class="nav-uname"><?php echo htmlspecialchars($username); ?></span>
                     <i class="fa-solid fa-chevron-down nav-chevron" id="navChevron"></i>
-                </div>
-                <div class="nav-dropdown" id="navDropdown">
+                </button>
+                <div class="nav-dropdown" id="navDropdown" aria-hidden="true">
                     <!-- A8: Logout is POST with CSRF -->
                     <form id="logoutForm" method="POST" action="logout.php" style="margin: 0; padding: 0;">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
@@ -68,7 +68,7 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     </div>
 </nav>
 
-<!-- Processing Overlay â€” shared across all pages -->
+<!-- Processing Overlay - shared across all pages -->
 <div id="processingOverlay" role="status" aria-live="polite" aria-label="Processing">
     <div class="proc-spinner">
         <div class="proc-ring proc-ring-1"></div>
@@ -90,11 +90,15 @@ if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
             e.stopPropagation();
             const isOpen = dropdown.classList.contains('nav-dropdown-open');
             dropdown.classList.toggle('nav-dropdown-open', !isOpen);
+            pill.setAttribute('aria-expanded', String(!isOpen));
+            dropdown.setAttribute('aria-hidden', String(isOpen));
             if (chevron) chevron.classList.toggle('open', !isOpen);
         });
 
         document.addEventListener('click', function () {
             dropdown.classList.remove('nav-dropdown-open');
+            pill.setAttribute('aria-expanded', 'false');
+            dropdown.setAttribute('aria-hidden', 'true');
             if (chevron) chevron.classList.remove('open');
         });
 

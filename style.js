@@ -56,8 +56,11 @@ document.addEventListener('click', function (e) {
       const isPassword = input.type === 'password';
       input.type = isPassword ? 'text' : 'password';
 
-      icon.classList.toggle('fa-eye');
-      icon.classList.toggle('fa-eye-slash');
+      const glyph = icon.querySelector('.fa-eye, .fa-eye-slash') || icon;
+      glyph.classList.toggle('fa-eye');
+      glyph.classList.toggle('fa-eye-slash');
+      icon.setAttribute('aria-pressed', String(isPassword));
+      icon.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
     }
   }
 });

@@ -12,13 +12,13 @@ body {
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    min-height: 125vh !important; /* 100vh ÷ zoom(0.8) = 125vh to fill viewport */
-    width: 125vw !important; /* 100vw ÷ zoom(0.8) = 125vw to fill width properly */
+    min-height: 100vh !important;
+    width: 100% !important;
     margin: 0 !important;
     padding-top: 90px !important; /* 80px nav + 10px breathing room */
     padding-bottom: 40px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
     overflow-x: hidden;
     overflow-y: auto;
     box-sizing: border-box;
@@ -163,7 +163,7 @@ body {
 
 .auth-input-field {
     width: 100%;
-    padding: 15px 16px 15px 48px !important;
+    padding: 15px 52px 15px 48px !important;
     background: rgba(0, 255, 255, 0.05);
     border: 1px solid rgba(0, 255, 255, 0.3);
     border-radius: 10px;
@@ -181,13 +181,22 @@ body {
     box-shadow: 0 0 16px rgba(0, 255, 255, 0.25);
 }
 
+.auth-input-field::placeholder {
+    color: rgba(0, 255, 255, 0.65);
+    opacity: 1;
+}
+
 /* Toggle eye icon */
 .auth-toggle-icon {
     position: absolute;
     right: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(0, 255, 255, 0.5);
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+    color: rgba(0, 255, 255, 0.7);
     cursor: pointer;
     font-size: 14px;
     transition: color 0.2s;
@@ -365,4 +374,41 @@ body {
     font-weight: bold;
     transition: all 0.3s;
     min-height: 18px;
+}
+
+.auth-toggle-icon:focus-visible,
+.auth-submit-btn:focus-visible,
+.auth-forgot-link:focus-visible,
+.auth-register-link a:focus-visible {
+    outline: 3px solid #00ff88;
+    outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+    .auth-login-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 32px 20px 28px !important;
+    }
+
+    .auth-login-container .auth-header h1 {
+        font-size: 1.8rem !important;
+        letter-spacing: 3px;
+    }
+
+    .auth-submit-btn {
+        font-size: 1rem !important;
+        letter-spacing: 2px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }

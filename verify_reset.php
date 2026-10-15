@@ -165,7 +165,9 @@ if (empty($_SESSION['csrf_token'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set Secure Password - System</title>
+    <title>Set New Password | Steganography</title>
+    <meta name="description" content="Set a new password for your Steganography account.">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=<?= filemtime('style.css') ?>">
     <link rel="stylesheet" href="auth.css?v=<?= filemtime('auth.css') ?>">
@@ -218,29 +220,29 @@ if (empty($_SESSION['csrf_token'])) {
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
 
                 <div class="auth-form-group">
-                    <label class="auth-form-label">New Password</label>
+                    <label class="auth-form-label" for="passwordField">New Password</label>
                     <div class="auth-input-wrapper">
                         <i class="fa-solid fa-lock auth-field-icon"></i>
                         <input type="password" name="password" id="passwordField" class="auth-input-field"
                             placeholder="Enter secure password" required autocomplete="new-password">
-                        <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
+                        <button type="button" class="auth-toggle-icon" id="togglePassword" aria-label="Show password" aria-controls="passwordField" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                     <div class="auth-validation-feedback" id="passwordRules">
-                        <span id="rule-length">â— At least 8 characters</span>
-                        <span id="rule-upper">â— At least One Uppercase Letter</span>
-                        <span id="rule-lower">â— At least One Lowercase Letter</span>
-                        <span id="rule-number">â— At least One Number</span>
-                        <span id="rule-special">â— At least One Special Symbol</span>
+                        <span id="rule-length">○ At least 8 characters</span>
+                        <span id="rule-upper">○ At least one uppercase letter</span>
+                        <span id="rule-lower">○ At least one lowercase letter</span>
+                        <span id="rule-number">○ At least one number</span>
+                        <span id="rule-special">○ At least one special symbol</span>
                     </div>
                 </div>
 
                 <div class="auth-form-group">
-                    <label class="auth-form-label">Confirm Password</label>
+                    <label class="auth-form-label" for="confirmPasswordField">Confirm Password</label>
                     <div class="auth-input-wrapper">
                         <i class="fa-solid fa-shield-halved auth-field-icon"></i>
                         <input type="password" name="confirm" id="confirmPasswordField" class="auth-input-field"
                             placeholder="Verify password" required autocomplete="new-password">
-                        <i class="fa-solid fa-eye auth-toggle-icon" id="toggleConfirmPassword"></i>
+                        <button type="button" class="auth-toggle-icon" id="toggleConfirmPassword" aria-label="Show password" aria-controls="confirmPasswordField" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                     </div>
                     <div id="matchFeedback" class="auth-match-feedback"></div>
                 </div>

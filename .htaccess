@@ -6,13 +6,13 @@ php_value post_max_size 35M
 php_value max_file_uploads 16
 
 # Custom error pages
-ErrorDocument 400 error.php?code=400
-ErrorDocument 401 error.php?code=401
-ErrorDocument 403 error.php?code=403
-ErrorDocument 404 error.php?code=404
-ErrorDocument 405 error.php?code=405
-ErrorDocument 500 error.php?code=500
-ErrorDocument 503 error.php?code=503
+ErrorDocument 400 /error.php?code=400
+ErrorDocument 401 /error.php?code=401
+ErrorDocument 403 /error.php?code=403
+ErrorDocument 404 /error.php?code=404
+ErrorDocument 405 /error.php?code=405
+ErrorDocument 500 /error.php?code=500
+ErrorDocument 503 /error.php?code=503
 
 # Security headers (CSP left untouched)
 <IfModule mod_headers.c>
@@ -20,6 +20,7 @@ ErrorDocument 503 error.php?code=503
     Header set X-Frame-Options "DENY"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+    Header always set Strict-Transport-Security "max-age=86400"
     Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none';"
 </IfModule>
 
@@ -31,5 +32,6 @@ ErrorDocument 503 error.php?code=503
 # Block access to migrations directory
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteRule ^favicon\.ico$ /favicon.svg [L]
     RewriteRule ^migrations(/.*)?$ - [F,L]
 </IfModule>

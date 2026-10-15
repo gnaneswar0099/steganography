@@ -38,7 +38,7 @@ if (!$isSecure && !$isLocalhost) {
 $generic_message = "If the email exists, a password reset link has been sent.";
 $message = '';
 
-// 1. CSRF TOKEN â€” generated BEFORE POST block
+// 1. CSRF TOKEN - generated BEFORE POST block
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("DB Error in request_reset: " . $e->getMessage());
         }
     }
-    // Anti-enumeration protection â€” always generic message
+    // Anti-enumeration protection - always generic message
     $message = $generic_message;
 }
 ?>
@@ -145,7 +145,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password - System</title>
+    <title>Reset Password | Steganography</title>
+    <meta name="description" content="Request a secure password reset link.">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=<?= filemtime('style.css') ?>">
     <link rel="stylesheet" href="auth.css?v=<?= filemtime('auth.css') ?>">
@@ -185,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
 
             <div class="auth-form-group">
-                <label class="auth-form-label">Account Email</label>
+                <label class="auth-form-label" for="emailField">Account Email</label>
                 <div class="auth-input-wrapper">
                     <i class="fa-solid fa-envelope auth-field-icon"></i>
                     <input type="email" name="email" id="emailField" class="auth-input-field"

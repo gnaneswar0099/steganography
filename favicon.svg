@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Steganography">
+  <rect width="64" height="64" rx="12" fill="#0a0e27"/>
+  <path d="M16 20h32v24H16z" fill="none" stroke="#00ffff" stroke-width="4"/>
+  <path d="M24 32h16M32 24v16" stroke="#00ff88" stroke-width="4" stroke-linecap="round"/>
+</svg>

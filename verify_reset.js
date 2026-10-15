@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmInput = document.getElementById('confirmPasswordField');
     const matchFeedback = document.getElementById('matchFeedback');
     const passwordRules = document.getElementById('passwordRules');
-    const verifyForm = document.getElementById('verifyResetForm');
+    const form = document.getElementById('verifyResetForm') || document.getElementById('registerForm');
     const overlay = document.getElementById('processingOverlay');
 
 
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkFormState() {
         const isPassValid = validatePassword();
         const isMatchValid = validateMatch();
-        const btn = verifyForm.querySelector('button');
+        const btn = form ? form.querySelector('button[type="submit"]') : null;
         if (btn) {
             btn.disabled = !(isPassValid && isMatchValid);
             btn.style.opacity = btn.disabled ? "0.5" : "1";
@@ -104,8 +104,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial check
     checkFormState();
 
-    if (verifyForm && overlay) {
-        verifyForm.addEventListener('submit', function (e) {
+    if (form && overlay) {
+        form.addEventListener('submit', function (e) {
             // 1. Check browser validity
             if (!this.checkValidity()) {
                 return;

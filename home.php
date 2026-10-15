@@ -43,6 +43,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 $payloadMaxKb = app_payload_max_kb();
+$maxImagePixels = app_max_image_pixels();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,7 +51,13 @@ $payloadMaxKb = app_payload_max_kb();
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Steganography</title>
+    <title>Secure Image Steganography</title>
+    <meta name="description" content="Hide and recover encrypted files inside images with secure steganography.">
+    <meta property="og:title" content="Secure Image Steganography">
+    <meta property="og:description" content="Hide and recover encrypted files inside images.">
+    <meta property="og:image" content="/logo.png">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
         integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
@@ -208,7 +215,8 @@ $payloadMaxKb = app_payload_max_kb();
                 area.innerHTML = `
                     <form class="form-container encode-form">
                         <input type="hidden" name="csrf_token" value="${CSRF_TOKEN}">
-                        <h2>Encode Image</h2><br>
+                        <h2>Encode Image</h2>
+                        <p style="margin: 0 0 18px; color: rgba(0, 255, 255, 0.72); font-size: 0.9rem; line-height: 1.5;">Limits: secret files total <?= $payloadMaxKb ?> KB; cover images up to <?= number_format($maxImagePixels) ?> pixels.</p>
                         
                         <div class="input-group" id="group-cover">
                             <label>Upload Cover Image (Image to hide data in)</label>
@@ -306,7 +314,7 @@ $payloadMaxKb = app_payload_max_kb();
                             <label>Password</label>
                             <div class="input-wrapper">
                                 <input type="password" name="password" id="encode-pass" placeholder="Enter password" autocomplete="off">
-                                <i class="fa-solid fa-eye toggle-icon"></i>
+                                <button type="button" class="toggle-icon" aria-label="Show password" aria-controls="encode-pass" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                             </div>
                             <div class="validation-feedback" id="encodePasswordRules" style="display:none; flex-direction:column; gap:5px; margin-top:10px; font-size:0.8rem; color:rgba(0, 255, 255, 0.6);">
                                 <span id="rule-length">● At least 8 characters</span>
@@ -343,7 +351,7 @@ $payloadMaxKb = app_payload_max_kb();
                             <label>Password</label>
                             <div class="input-wrapper">
                                 <input type="password" name="password" id="decode-pass" placeholder="Enter password" required autocomplete="off">
-                                <i class="fa-solid fa-eye toggle-icon"></i>
+                                <button type="button" class="toggle-icon" aria-label="Show password" aria-controls="decode-pass" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                             </div>
                         </div>
                         <button class="btn-submit" type="submit">Reveal Data</button>

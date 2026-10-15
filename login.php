@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app_config.php';
 
+header('Content-Type: text/html; charset=UTF-8');
+
 // Start session
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', '7200');
@@ -144,7 +146,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Sign In | Steganography</title>
+    <meta name="description" content="Sign in to the secure image steganography workspace.">
+    <meta property="og:title" content="Sign In | Steganography">
+    <meta property="og:description" content="Access the secure image steganography workspace.">
+    <meta property="og:image" content="/logo.png">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
         integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -175,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
 
         <?php if (!empty($errors)): ?>
-            <div class="auth-error-msg">
+            <div class="auth-error-msg" role="alert">
                 <?php foreach ($errors as $error): ?>
                     <span>
                         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -194,14 +202,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="login.php" autocomplete="off">
+        <form method="POST" action="login.php" autocomplete="on">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
 
             <div class="auth-form-group">
-                <label class="auth-form-label">Email</label>
+                <label class="auth-form-label" for="emailField">Email</label>
                 <div class="auth-input-wrapper">
                     <i class="fa-solid fa-envelope auth-field-icon"></i>
-                    <input type="email" name="email" class="auth-input-field"
+                    <input type="email" name="email" id="emailField" class="auth-input-field"
                            placeholder="Enter your email" required
                            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                            autocomplete="email">
@@ -209,12 +217,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             </div>
 
             <div class="auth-form-group">
-                <label class="auth-form-label">Password</label>
+                <label class="auth-form-label" for="passwordField">Password</label>
                 <div class="auth-input-wrapper">
                     <i class="fa-solid fa-lock auth-field-icon"></i>
                     <input type="password" name="password" id="passwordField" class="auth-input-field"
-                           placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="current-password">
-                    <i class="fa-solid fa-eye auth-toggle-icon" id="togglePassword"></i>
+                           placeholder="Enter your password" required autocomplete="current-password">
+                    <button type="button" class="auth-toggle-icon" id="togglePassword" aria-label="Show password" aria-controls="passwordField" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                 </div>
             </div>
 
