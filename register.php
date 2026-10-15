@@ -118,29 +118,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $pdo->commit();
 
                 if ($emailVerificationRequired) {
-                // Build activation URL
-                $isSecure  = app_is_https();
-                $protocol  = $isSecure ? "https" : "http";
-                $base_dir  = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-                $activationLink = $protocol . "://" . $_SERVER['HTTP_HOST'] . $base_dir . "/verify_email.php?token=" . urlencode($token);
+                    $activationLink = null;
+                    try {
+                        $base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+                        $activationLink = app_public_origin() . $base_dir . "/verify_email.php?token=" . urlencode($token);
+                    } catch (RuntimeException $e) {
+                        error_log("Link build failed: invalid or missing APP_URL");
+                    }
 
-                // Send email
-                $subject  = "Activate your Steganography Account";
-                $htmlBody = "Hello " . htmlspecialchars($username, ENT_QUOTES, 'UTF-8') . ",<br><br>"
-                          . "Thank you for creating an account. Please click the button or link below to verify your email and activate your account:<br><br>"
-                          . "<a href='" . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:10px 20px;background:#00ffff;color:#000;font-weight:bold;text-decoration:none;border-radius:4px;'>ACTIVATE ACCOUNT</a><br><br>"
-                          . "Or copy and paste this link into your browser:<br>"
-                          . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "<br><br>"
-                          . "This link will expire in 24 hours.<br><br>"
-                          . "If you did not sign up for this account, please ignore this email.";
+                    if ($activationLink !== null) {
+                        $subject  = "Activate your Steganography Account";
+                        $htmlBody = "Hello " . htmlspecialchars($username, ENT_QUOTES, 'UTF-8') . ",<br><br>"
+                                  . "Thank you for creating an account. Please click the button or link below to verify your email and activate your account:<br><br>"
+                                  . "<a href='" . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:10px 20px;background:#00ffff;color:#000;font-weight:bold;text-decoration:none;border-radius:4px;'>ACTIVATE ACCOUNT</a><br><br>"
+                                  . "Or copy and paste this link into your browser:<br>"
+                                  . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "<br><br>"
+                                  . "This link will expire in 24 hours.<br><br>"
+                                  . "If you did not sign up for this account, please ignore this email.";
 
-                $textBody = "Hello {$username},\n\n"
-                          . "Thank you for creating an account. Please visit the link below to verify your email:\n\n"
-                          . "{$activationLink}\n\n"
-                          . "This link will expire in 24 hours.\n\n"
-                          . "If you did not sign up, please ignore this message.";
+                        $textBody = "Hello {$username},\n\n"
+                                  . "Thank you for creating an account. Please visit the link below to verify your email:\n\n"
+                                  . "{$activationLink}\n\n"
+                                  . "This link will expire in 24 hours.\n\n"
+                                  . "If you did not sign up, please ignore this message.";
 
-                send_system_email($email, $subject, $htmlBody, $textBody);
+                        send_system_email($email, $subject, $htmlBody, $textBody);
+                    }
 
                     $success_msg = "Registration successful! A verification link has been dispatched to your email address. Please click the link to activate your account before logging in.";
                 } else {

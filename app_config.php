@@ -60,3 +60,30 @@ function app_email_verification_required(): bool
     $value = strtolower(trim((string) app_env('EMAIL_VERIFICATION_REQUIRED', app_runtime_env(), '1')));
     return !in_array($value, ['0', 'false', 'no'], true);
 }
+
+function app_public_origin(): string
+{
+    $configuredUrl = trim((string) app_env('APP_URL', app_runtime_env(), ''));
+    $parts = parse_url($configuredUrl);
+
+    if (
+        $configuredUrl === ''
+        || $parts === false
+        || !isset($parts['scheme'], $parts['host'])
+        || !in_array(strtolower($parts['scheme']), ['http', 'https'], true)
+        || isset($parts['user'])
+        || isset($parts['pass'])
+        || isset($parts['query'])
+        || isset($parts['fragment'])
+        || (isset($parts['path']) && $parts['path'] !== '' && $parts['path'] !== '/')
+    ) {
+        throw new RuntimeException('APP_URL must be a valid HTTP(S) origin without a path or credentials.');
+    }
+
+    $origin = strtolower($parts['scheme']) . '://' . strtolower($parts['host']);
+    if (isset($parts['port'])) {
+        $origin .= ':' . $parts['port'];
+    }
+
+    return rtrim($origin, '/');
+}

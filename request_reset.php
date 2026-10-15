@@ -29,9 +29,16 @@ require_once __DIR__ . '/db.php';
 // 1. HTTPS ENFORCEMENT WITH LOCALHOST EXCEPTION
 $isLocalhost = in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']) || str_contains($_SERVER['HTTP_HOST'], 'localhost') || str_contains($_SERVER['HTTP_HOST'], '127.0.0.1');
 if (!$isSecure && !$isLocalhost) {
-    $redirect_url = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    header("Location: $redirect_url", true, 301);
-    exit();
+    try {
+        $redirect_url = app_public_origin() . ($_SERVER['REQUEST_URI'] ?? '/');
+    } catch (RuntimeException $e) {
+        error_log("Link build failed: invalid or missing APP_URL");
+        $redirect_url = null;
+    }
+    if ($redirect_url !== null) {
+        header("Location: $redirect_url", true, 301);
+        exit();
+    }
 }
 
 // ANTI-ENUMERATION PROTECTION
@@ -111,25 +118,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$email, $token_hash, $capture_ip, $capture_ua]);
 
                     // Reset link
-                    $protocol = $isSecure ? "https" : "http";
                     $base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-                    $reset_link = $protocol . "://" . $_SERVER['HTTP_HOST'] . $base_dir . "/verify_reset.php?token=" . urlencode($token);
+                    $reset_link = null;
+                    try {
+                        $reset_link = app_public_origin() . $base_dir . "/verify_reset.php?token=" . urlencode($token);
+                    } catch (RuntimeException $e) {
+                        error_log("Link build failed: invalid or missing APP_URL");
+                    }
 
-                    // B4: Send email via HTTPS Mailer API
-                    $subject = 'Secure Password Reset';
-                    $htmlBody = "A password reset request was received for your account.<br><br>"
-                              . "If you initiated this request, click the link below to reset your password:<br><br>"
-                              . "<a href='" . htmlspecialchars($reset_link, ENT_QUOTES, 'UTF-8') . "' style='color:#00ffff; font-weight:bold;'>Reset Password</a><br><br>"
-                              . "This link will expire in 30 minutes.<br><br>"
-                              . "If you did not request this, please ignore this email.";
+                    if ($reset_link !== null) {
+                        $subject = 'Secure Password Reset';
+                        $htmlBody = "A password reset request was received for your account.<br><br>"
+                                  . "If you initiated this request, click the link below to reset your password:<br><br>"
+                                  . "<a href='" . htmlspecialchars($reset_link, ENT_QUOTES, 'UTF-8') . "' style='color:#00ffff; font-weight:bold;'>Reset Password</a><br><br>"
+                                  . "This link will expire in 30 minutes.<br><br>"
+                                  . "If you did not request this, please ignore this email.";
 
-                    $altBody  = "A password reset request was received for your account.\n\n"
-                              . "If you initiated this request, copy and paste the link below to reset your password:\n\n"
-                              . "{$reset_link}\n\n"
-                              . "This link will expire in 30 minutes.\n\n"
-                              . "If you did not request this, please ignore this email.";
+                        $altBody  = "A password reset request was received for your account.\n\n"
+                                  . "If you initiated this request, copy and paste the link below to reset your password:\n\n"
+                                  . "{$reset_link}\n\n"
+                                  . "This link will expire in 30 minutes.\n\n"
+                                  . "If you did not request this, please ignore this email.";
 
-                    send_system_email($email, $subject, $htmlBody, $altBody);
+                        send_system_email($email, $subject, $htmlBody, $altBody);
+                    }
                 }
             }
         } catch (PDOException $e) {

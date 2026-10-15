@@ -574,7 +574,7 @@ $maxImagePixels = app_max_image_pixels();
                 item.innerHTML = `
                     <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
                         <i class="fa-solid fa-file-code" style="color:#00ffff; font-size:1.1em;"></i>
-                        <span style="font-size:0.95em; color: #e0e0e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${f.name}</span>
+                        <span class="file-name" style="font-size:0.95em; color: #e0e0e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;"></span>
                     </div>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span style="font-size:0.85em; color:rgba(0, 255, 255, 0.7); white-space:nowrap;">${formatBytes(f.size)}</span>
@@ -584,6 +584,7 @@ $maxImagePixels = app_max_image_pixels();
                     </div>
                 `;
 
+                item.querySelector('.file-name').textContent = f.name;
                 const removeBtn = item.querySelector('.single-remove-btn');
                 removeBtn.onclick = () => removeSingleFile(index, previewId, groupId, inputElement);
 

@@ -95,25 +95,30 @@ if ($emailVerificationRequired && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     $insStmt->execute([$email, $token_hash]);
                     $pdo->commit();
 
-                    $isSecure = app_is_https();
-                    $protocol = $isSecure ? "https" : "http";
                     $base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-                    $activationLink = $protocol . "://" . $_SERVER['HTTP_HOST'] . $base_dir . "/verify_email.php?token=" . urlencode($token);
+                    $activationLink = null;
+                    try {
+                        $activationLink = app_public_origin() . $base_dir . "/verify_email.php?token=" . urlencode($token);
+                    } catch (RuntimeException $e) {
+                        error_log("Link build failed: invalid or missing APP_URL");
+                    }
 
-                    $subject  = "Activate your Steganography Account (New Link)";
-                    $htmlBody = "Hello " . htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8') . ",<br><br>"
-                              . "A new activation link was requested for your account.<br><br>"
-                              . "<a href='" . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:10px 20px;background:#00ffff;color:#000;font-weight:bold;text-decoration:none;border-radius:4px;'>ACTIVATE ACCOUNT</a><br><br>"
-                              . "Or copy and paste this link:<br>"
-                              . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "<br><br>"
-                              . "This link will expire in 24 hours.";
+                    if ($activationLink !== null) {
+                        $subject  = "Activate your Steganography Account (New Link)";
+                        $htmlBody = "Hello " . htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8') . ",<br><br>"
+                                  . "A new activation link was requested for your account.<br><br>"
+                                  . "<a href='" . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:10px 20px;background:#00ffff;color:#000;font-weight:bold;text-decoration:none;border-radius:4px;'>ACTIVATE ACCOUNT</a><br><br>"
+                                  . "Or copy and paste this link:<br>"
+                                  . htmlspecialchars($activationLink, ENT_QUOTES, 'UTF-8') . "<br><br>"
+                                  . "This link will expire in 24 hours.";
 
-                    $textBody = "Hello {$user['username']},\n\n"
-                              . "A new activation link was requested for your account:\n\n"
-                              . "{$activationLink}\n\n"
-                              . "This link will expire in 24 hours.";
+                        $textBody = "Hello {$user['username']},\n\n"
+                                  . "A new activation link was requested for your account:\n\n"
+                                  . "{$activationLink}\n\n"
+                                  . "This link will expire in 24 hours.";
 
-                    send_system_email($email, $subject, $htmlBody, $textBody);
+                        send_system_email($email, $subject, $htmlBody, $textBody);
+                    }
                 }
             }
         } catch (PDOException $e) {

@@ -27,9 +27,16 @@ require_once __DIR__ . '/db.php';
 // HTTPS ENFORCEMENT WITH LOCALHOST EXCEPTION
 $isLocalhost = in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']) || str_contains($_SERVER['HTTP_HOST'], 'localhost') || str_contains($_SERVER['HTTP_HOST'], '127.0.0.1');
 if (!$isSecure && !$isLocalhost) {
-    $redirect_url = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    header("Location: $redirect_url", true, 301);
-    exit();
+    try {
+        $redirect_url = app_public_origin() . ($_SERVER['REQUEST_URI'] ?? '/');
+    } catch (RuntimeException $e) {
+        error_log("Link build failed: invalid or missing APP_URL");
+        $redirect_url = null;
+    }
+    if ($redirect_url !== null) {
+        header("Location: $redirect_url", true, 301);
+        exit();
+    }
 }
 
 $message = '';
