@@ -22,7 +22,8 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 $maxImagePixels = app_max_image_pixels();
-$maxCoverBytes = 20 * 1024 * 1024;
+$maxCoverBytes = app_max_cover_bytes();
+$maxSecretBytes = app_max_secret_bytes();
 $maxSecretFiles = 15;
 ?>
 <!DOCTYPE html>
@@ -97,6 +98,7 @@ $maxSecretFiles = 15;
         const MAX_COVER_BYTES = <?= json_encode($maxCoverBytes) ?>;
         const MAX_IMAGE_PIXELS = <?= json_encode($maxImagePixels) ?>;
         const MAX_SECRET_FILES = <?= json_encode($maxSecretFiles) ?>;
+        const MAX_SECRET_BYTES = <?= json_encode($maxSecretBytes) ?>;
         const CAPACITY_HEADER_PIXELS = <?= json_encode(88) ?>;
         const CAPACITY_GCM_TAG_BYTES = <?= json_encode(16) ?>;
 
@@ -201,6 +203,7 @@ $maxSecretFiles = 15;
                     <form class="form-container encode-form">
                         <input type="hidden" name="csrf_token" value="${CSRF_TOKEN}">
                         <h2>Encode Image</h2>
+                        <p style="margin: 0 0 18px; color: rgba(0, 255, 255, 0.72); font-size: 0.9rem; line-height: 1.5;">Cover file limit: <?= number_format($maxCoverBytes / 1024 / 1024, 0) ?> MB, maximum <?= number_format($maxImagePixels) ?> pixels, and up to <?= $maxSecretFiles ?> secret files with <?= number_format($maxSecretBytes / 1024 / 1024, 0) ?> MB total raw input. The selected cover's capacity is the final payload limit.</p>
                         <div class="input-group" id="group-cover">
                             <label>Upload Cover Image (Image to hide data in)</label>
                             <input type="file" name="cover_image" id="input-cover" accept="image/png, image/jpeg, image/jpg" required>
@@ -353,13 +356,19 @@ $maxSecretFiles = 15;
 
             if (input.id === 'input-secret') {
                 let currentCount = secretFilesArray.length;
+                let currentTotal = secretFilesArray.reduce((total, file) => total + file.size, 0);
                 let added = 0;
                 for (let i = 0; i < files.length; i++) {
                     if (currentCount + added >= MAX_SECRET_FILES) {
                         showToast(`Maximum of ${MAX_SECRET_FILES} secret files reached. Some files were not added.`);
                         break;
                     }
+                    if (currentTotal + files[i].size > MAX_SECRET_BYTES) {
+                        showToast(`Secret files cannot exceed ${formatBytes(MAX_SECRET_BYTES)} total.`);
+                        break;
+                    }
                     secretFilesArray.push(files[i]);
+                    currentTotal += files[i].size;
                     added++;
                 }
                 updateSecretFilesPreview(previewId, groupId, input);
@@ -776,6 +785,12 @@ $maxSecretFiles = 15;
 
             if (secretFilesArray.length > 15) {
                 showToast("You can only hide a maximum of 15 secret files at once. Please remove some files.");
+                return;
+            }
+
+            const totalSecretBytes = secretFilesArray.reduce((total, file) => total + (file.size || 0), 0);
+            if (totalSecretBytes > MAX_SECRET_BYTES) {
+                showToast(`Secret files cannot exceed ${formatBytes(MAX_SECRET_BYTES)} total.`);
                 return;
             }
 

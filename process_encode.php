@@ -106,9 +106,9 @@ try {
         throw new RuntimeException("Cover image dimensions exceed the {$maxImagePixels}-pixel limit.");
     }
 
-    // Limit cover image to 20 MB to prevent memory exhaustion during GD processing
-    if ($_FILES['cover_image']['size'] > 20 * 1024 * 1024) {
-        throw new RuntimeException("Cover image too large. Maximum allowed size is 20 MB.");
+    // Limit cover image to 10 MB to prevent memory exhaustion during GD processing
+    if ($_FILES['cover_image']['size'] > app_max_cover_bytes()) {
+        throw new RuntimeException("Cover image too large. Maximum allowed size is 10 MB.");
     }
 
     if (empty($_POST['password'])) {
@@ -134,6 +134,14 @@ try {
     $fileCount = count($files['name']);
     if ($fileCount > 15) {
         throw new RuntimeException("Too many files. Max 15 allowed.");
+    }
+
+    $totalSecretBytes = 0;
+    foreach ($files['size'] as $size) {
+        $totalSecretBytes += (int) $size;
+    }
+    if ($totalSecretBytes > app_max_secret_bytes()) {
+        throw new RuntimeException("Secret files cannot exceed 10 MB total.");
     }
 
     // Create a temporary zip file

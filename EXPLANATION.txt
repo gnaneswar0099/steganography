@@ -586,7 +586,7 @@ or MySQL CLI before first use.
      $_FILES['cover_image']['error'] === UPLOAD_ERR_OK
      getimagesize($coverPath)  must return IMAGETYPE_PNG or IMAGETYPE_JPEG
      If JPEG is detected, its MIME type is shown in the error for clarity.
-     Max size: 20 MB (prevents memory exhaustion in GD).
+     Max size: 10 MB (prevents memory exhaustion in GD).
 
   6. PASSWORD:
      $_POST['password'] must be non-empty. (Complexity rules enforced client-side;
@@ -659,7 +659,7 @@ or MySQL CLI before first use.
 
   5. STEGO IMAGE VALIDATION:
      $_FILES['stego_image'] must upload correctly.
-     Max 20 MB (matching the configured upload limit).
+     Max 10 MB (matching the configured upload limit).
      Must be IMAGETYPE_PNG. (JPEG cannot be decoded — lossy compression destroys bits.)
 
   6. PASSWORD: Must be non-empty.
@@ -672,7 +672,7 @@ or MySQL CLI before first use.
 
   8. SANITY CHECKS (before expensive PBKDF2 computation):
      $header['lsb'] must be 1 or 2.
-     $header['len'] must be at least 10 bytes and ≤ 20 MB.
+     $header['len'] must be at least 10 bytes and ≤ 10 MB.
      These catch obviously corrupted images without PBKDF2 overhead.
 
   9. KEY DERIVATION:
@@ -1155,7 +1155,7 @@ or MySQL CLI before first use.
                            confirm payload exists ("plausible deniability")
   Weak Passwords           8+ chars, upper + lower + digit + special required
   Auth Tag Tampering       AES-256-GCM 16-byte tag detects ANY ciphertext change
-  Memory Exhaustion (GD)   320M limit; 20MB cover image cap; MAX_IMAGE_PIXELS cap
+  Memory Exhaustion (GD)   320M limit; 10MB cover image cap; MAX_IMAGE_PIXELS cap
   Zip Bomb / Large Files   15-file limit; image capacity check after compression
   DoS via Slow PBKDF2      Images validated for capacity BEFORE expensive KDF
 
@@ -1293,8 +1293,8 @@ or MySQL CLI before first use.
   2. MAX SECRET SIZE = COVER CAPACITY, measured against the ZIP/zlib-compressed
      payload after the selected files are archived and compressed.
 
-  3. MAX COVER IMAGE = 20 MB file size.
-     A 20 MB JPEG typically corresponds to a resolution well over 20 megapixels.
+  3. MAX COVER IMAGE = 10 MB file size.
+     MAX_IMAGE_PIXELS remains the primary image-processing safeguard.
 
   4. MAX IMAGE PIXELS = MAX_IMAGE_PIXELS (9,000,000 by default) for cover and
      stego images.

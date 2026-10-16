@@ -87,9 +87,9 @@ try {
 
     $stegoPath = $_FILES['stego_image']['tmp_name'];
 
-    // LIMIT: Max 20 MB for stego image (matches encode cover image limit)
-    if ($_FILES['stego_image']['size'] > 20 * 1024 * 1024) {
-        throw new RuntimeException("Stego image too large (Max 20 MB).");
+    // LIMIT: Max 10 MB for stego image (matches encode cover image limit)
+    if ($_FILES['stego_image']['size'] > app_max_cover_bytes()) {
+        throw new RuntimeException("Stego image too large (Max 10 MB).");
     }
 
     // Verify it's a valid PNG image using getimagesize()
@@ -126,7 +126,7 @@ try {
         throw new RuntimeException("Invalid password or corrupted image. (bad LSB mode)");
     }
     // Minimum length check (compressed empty ZIP is >10 bytes)
-    if ($header['len'] < 10 || $header['len'] > 20 * 1024 * 1024) {
+    if ($header['len'] < 10 || $header['len'] > app_max_secret_bytes()) {
         throw new RuntimeException("Invalid password or corrupted image. (bad payload length)");
     }
     if ($header['len'] > app_payload_capacity_bytes($imgWidth, $imgHeight, $header['lsb'])) {
