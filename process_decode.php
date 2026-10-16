@@ -11,6 +11,28 @@ ini_set('log_errors', '1');
 // Allow enough memory and time for GD pixel processing on large images
 // memory_limit controlled by docker/php.ini
 set_time_limit(180);
+$operationStartedAt = microtime(true);
+
+register_shutdown_function(static function (): void {
+    $lastError = error_get_last();
+    $fatalTypes = [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_USER_ERROR];
+
+    if ($lastError === null || !in_array($lastError['type'], $fatalTypes, true)) {
+        return;
+    }
+
+    error_log('Decode fatal error: processing failed');
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=UTF-8');
+    }
+
+    echo 'Decoding could not be completed. Please use a valid steganographic image and try again.';
+});
 
 // Buffer ALL output from this point — cleared before sending binary or error
 ob_start();
@@ -28,8 +50,9 @@ try {
 
     // Session Start
     if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+        app_start_session();
     }
+    app_enforce_session_timeout(true, true);
 
     // Discard any stray output from includes before we send headers
     if (ob_get_level()) {
@@ -39,22 +62,14 @@ try {
     // 1. Session Check (Login Required + idle timeout)
     if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
         http_response_code(403);
-        exit("Access Denied: You must be logged in.");
+        exit("Your session expired, please log in again.");
     }
 
     // Enforce 2-hour server-side idle timeout
-    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 7200)) {
-        session_unset();
-        session_destroy();
-        http_response_code(401);
-        exit("Session expired. Please log in again.");
-    }
-    $_SESSION['last_activity'] = time(); // Rolling update
-
     // 2. HTTP Method Check
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
-        exit("Method Not Allowed");
+        exit("This action is not available for this request.");
     }
 
     // 3. CSRF Check — use null-coalescing so missing key never throws TypeError
@@ -62,7 +77,7 @@ try {
     $postCsrf = $_POST['csrf_token'] ?? '';
     if (empty($postCsrf) || !hash_equals($sessionCsrf, $postCsrf)) {
         http_response_code(403);
-        exit("Invalid CSRF Token");
+        exit("Your session expired or the page was open too long. Please reload the page and try again.");
     }
 
     // 4. Input Validation
@@ -113,6 +128,9 @@ try {
     // Minimum length check (compressed empty ZIP is >10 bytes)
     if ($header['len'] < 10 || $header['len'] > 20 * 1024 * 1024) {
         throw new RuntimeException("Invalid password or corrupted image. (bad payload length)");
+    }
+    if ($header['len'] > app_payload_capacity_bytes($imgWidth, $imgHeight, $header['lsb'])) {
+        throw new RuntimeException("Invalid password or corrupted image.");
     }
 
     // 6. Derive Key and Seed
@@ -165,6 +183,15 @@ try {
     } catch (Throwable $logEx) {
         error_log("Decode activity log error: " . $logEx->getMessage());
     }
+
+    error_log(sprintf(
+        'Decode complete: pixels=%d lsb=%d payload_bytes=%d elapsed_seconds=%.3f peak_memory_mb=%.2f',
+        $imgWidth * $imgHeight,
+        $header['lsb'],
+        $header['len'] + 16,
+        microtime(true) - $operationStartedAt,
+        memory_get_peak_usage(true) / 1048576
+    ));
 
     // Output Result
     // Pipeline: LSB extract → AES decrypt → zlib decompress → ZIP output.

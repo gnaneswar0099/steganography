@@ -5,28 +5,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/app_config.php';
 
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.gc_maxlifetime', '7200');
-    $isSecure = app_is_https();
-    session_set_cookie_params([
-        'lifetime' => 7200, 'path' => '/', 'domain' => '',
-        'secure'   => $isSecure,
-        'httponly' => true, 'samesite' => 'Strict',
-    ]);
-    session_start();
+    app_start_session();
 }
 
 // Auth guard
-if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 7200)) {
-    session_unset();
-    session_destroy();
-    header('Location: login.php');
-    exit;
-}
-$_SESSION['last_activity'] = time();
+app_enforce_session_timeout(true);
 
 require_once 'db.php';
 

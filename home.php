@@ -6,31 +6,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/app_config.php';
 
 if (session_status() === PHP_SESSION_NONE) {
-    // Session Security
-    $isHttps = app_is_https();
-    session_set_cookie_params([
-        'lifetime' => 7200,
-        'path' => '/',
-        'domain' => '',
-        'secure' => $isHttps,
-        'httponly' => true,
-        'samesite' => 'Strict'
-    ]);
-    session_start();
+    app_start_session();
 }
 
-// ── Server-side session timeout (2 hours = 7200 s) ───────────────────────────
-// Only enforced for authenticated users; guests may browse home.php freely.
-if (isset($_SESSION['user_id'])) {
-    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 7200)) {
-        // Session has been idle for more than 2 hours — invalidate it
-        session_unset();
-        session_destroy();
-        header("Location: login.php");
-        exit;
-    }
-    $_SESSION['last_activity'] = time(); // Rolling update — reset the idle clock
-}
+app_enforce_session_timeout();
 
 // Check if user is authenticated (but do NOT redirect if not)
 $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
@@ -115,11 +94,13 @@ $maxSecretFiles = 15;
     <script>
         // Pass PHP session status to JS
         const IS_LOGGED_IN = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
-        const CSRF_TOKEN = "<?php echo $csrf_token; ?>";
+        const CSRF_TOKEN = <?= json_encode($csrf_token, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         const MAX_COVER_BYTES = <?= json_encode($maxCoverBytes) ?>;
         const MAX_IMAGE_PIXELS = <?= json_encode($maxImagePixels) ?>;
         const MAX_SECRET_FILES = <?= json_encode($maxSecretFiles) ?>;
         const MAX_PAYLOAD_BYTES = <?= json_encode($payloadMaxKb * 1024) ?>;
+        const CAPACITY_HEADER_PIXELS = <?= json_encode(88) ?>;
+        const CAPACITY_GCM_TAG_BYTES = <?= json_encode(16) ?>;
 
         function showLoader(mode) {
             const overlay = document.getElementById('processingOverlay');
@@ -243,8 +224,16 @@ $maxSecretFiles = 15;
                         <!-- Capacity Display -->
                         <div id="capacity-display" style="display:none; margin-bottom: 20px; padding: 14px 16px; border-radius: 10px; background: rgba(0, 255, 255, 0.04); border: 1px solid rgba(0, 255, 255, 0.2);">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Estimated Compressed Capacity</span>
+                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Cover Capacity</span>
                                 <span id="capacity-value" style="color: #00ffff; font-weight: bold; font-size:0.88em;"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Server Cap</span>
+                                <span id="server-capacity-value" style="color: #00ffff; font-weight: bold; font-size:0.88em;"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Usable Now</span>
+                                <span id="usable-capacity-value" style="color: #00ff88; font-weight: bold; font-size:0.88em;"></span>
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                                 <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Raw Selected Size (Advisory)</span>
@@ -576,10 +565,7 @@ $maxSecretFiles = 15;
             const totalPixels = currentCoverImageWidth * currentCoverImageHeight;
 
             // Header: 33 bytes stored in LSB1, requiring exactly 88 pixels.
-            const headerBytes = 33;
-            const headerPixels = Math.ceil((headerBytes * 8) / 3); // 88 pixels
-
-            const availablePixels = totalPixels - headerPixels;
+            const availablePixels = totalPixels - CAPACITY_HEADER_PIXELS;
 
             let maxCapacity = 0;
             if (availablePixels > 0) {
@@ -588,12 +574,15 @@ $maxSecretFiles = 15;
                 const maxBodyBytes = Math.floor(maxBodyBits / 8);
 
                 // The body includes the 16-byte AES-GCM tag.
-                maxCapacity = maxBodyBytes - 16;
+                maxCapacity = maxBodyBytes - CAPACITY_GCM_TAG_BYTES;
             }
 
             if (maxCapacity < 0) maxCapacity = 0;
 
+            const usableCapacity = Math.min(maxCapacity, MAX_PAYLOAD_BYTES);
             document.getElementById('capacity-value').textContent = formatBytes(maxCapacity);
+            document.getElementById('server-capacity-value').textContent = formatBytes(MAX_PAYLOAD_BYTES);
+            document.getElementById('usable-capacity-value').textContent = formatBytes(usableCapacity);
 
             // Calculate Usage
             let currentUsage = 0;
@@ -608,7 +597,7 @@ $maxSecretFiles = 15;
             const pctEl = document.getElementById('capacity-pct');
             const submitBtn = document.querySelector('.btn-submit');
 
-            const pct = maxCapacity > 0 ? Math.min((currentUsage / maxCapacity) * 100, 100) : (currentUsage > 0 ? 100 : 0);
+            const pct = usableCapacity > 0 ? Math.min((currentUsage / usableCapacity) * 100, 100) : (currentUsage > 0 ? 100 : 0);
             const displayPct = Math.round(pct);
 
             if (barEl) {
@@ -901,6 +890,10 @@ $maxSecretFiles = 15;
 
                     updateCapacityDisplay();
                 } else {
+                    if (response.status === 401) {
+                        window.location.href = 'login.php?session_expired=1';
+                        return;
+                    }
                     const text = await response.text();
                     showToast("Error: " + text);
                 }
@@ -1009,6 +1002,10 @@ $maxSecretFiles = 15;
                     const groupStego = document.getElementById('group-stego');
                     if (groupStego) groupStego.classList.remove('has-file');
                 } else {
+                    if (response.status === 401) {
+                        window.location.href = 'login.php?session_expired=1';
+                        return;
+                    }
                     const text = await response.text();
                     showToast("Error: " + text);
                 }

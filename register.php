@@ -9,18 +9,9 @@ require_once 'mailer.php';
 
 // Start Session (Strict)
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.gc_maxlifetime', '7200');
-    $isSecure = app_is_https();
-    session_set_cookie_params([
-        'lifetime' => 7200,
-        'path'     => '/',
-        'domain'   => '',
-        'secure'   => $isSecure,
-        'httponly' => true,
-        'samesite' => 'Strict'
-    ]);
-    session_start();
+    app_start_session();
 }
+app_enforce_session_timeout();
 
 // Generate CSRF Token
 if (empty($_SESSION['csrf_token'])) {

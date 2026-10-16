@@ -55,6 +55,119 @@ function app_payload_max_kb(): int
     return max(1, (int) $val);
 }
 
+function app_encode_max_seconds(): int
+{
+    $val = app_env('ENCODE_MAX_SECONDS', app_runtime_env(), '100');
+    return max(1, (int) $val);
+}
+
+function app_payload_capacity_bytes(int $width, int $height, int $lsbMode): int
+{
+    if (($width <= 0) || ($height <= 0) || !in_array($lsbMode, [1, 2], true)) {
+        return 0;
+    }
+
+    $totalPixels = $width * $height;
+    $availablePixels = $totalPixels - 88;
+    if ($availablePixels <= 0) {
+        return 0;
+    }
+
+    return max(0, (int) floor(($availablePixels * 3 * $lsbMode) / 8) - 16);
+}
+
+function app_session_idle_seconds(): int
+{
+    $minutes = (int) app_env('SESSION_IDLE_MINUTES', app_runtime_env(), '30');
+    return max(1, $minutes) * 60;
+}
+
+function app_session_absolute_seconds(): int
+{
+    $hours = (int) app_env('SESSION_ABSOLUTE_HOURS', app_runtime_env(), '8');
+    return max(1, $hours) * 3600;
+}
+
+function app_start_session(): void
+{
+    if (session_status() !== PHP_SESSION_NONE) {
+        return;
+    }
+
+    $gcLifetime = max(app_session_idle_seconds(), app_session_absolute_seconds());
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.gc_maxlifetime', (string) $gcLifetime);
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => app_is_https(),
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    session_start();
+}
+
+function app_destroy_session(): void
+{
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', [
+            'expires' => time() - 3600,
+            'path' => $params['path'],
+            'domain' => $params['domain'],
+            'secure' => $params['secure'],
+            'httponly' => $params['httponly'],
+            'samesite' => $params['samesite'] ?? 'Strict',
+        ]);
+    }
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
+}
+
+function app_enforce_session_timeout(bool $requireAuth = false, bool $api = false): void
+{
+    $authenticated = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    if (!$authenticated) {
+        if ($requireAuth) {
+            if ($api) {
+                http_response_code(401);
+                header('Content-Type: text/plain; charset=UTF-8');
+                exit('Your session expired, please log in again.');
+            }
+            header('Location: login.php');
+            exit;
+        }
+        return;
+    }
+
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $now = time();
+    $loginAt = (int) ($_SESSION['login_at'] ?? 0);
+    $lastActivity = (int) ($_SESSION['last_activity'] ?? 0);
+
+    if (
+        $loginAt <= 0
+        || $lastActivity <= 0
+        || ($now - $lastActivity) > app_session_idle_seconds()
+        || ($now - $loginAt) > app_session_absolute_seconds()
+    ) {
+        app_destroy_session();
+        if ($api) {
+            http_response_code(401);
+            header('Content-Type: text/plain; charset=UTF-8');
+            exit('Your session expired, please log in again.');
+        }
+        header('Location: login.php?session_expired=1');
+        exit;
+    }
+
+    $_SESSION['last_activity'] = $now;
+}
+
 function app_email_verification_required(): bool
 {
     $value = strtolower(trim((string) app_env('EMAIL_VERIFICATION_REQUIRED', app_runtime_env(), '1')));

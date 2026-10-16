@@ -10,18 +10,10 @@ header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; script-src 'self'");
 
-// 9. SESSION TIMEOUT EXTENSION (2 Hours)
-ini_set('session.gc_maxlifetime', '7200');
+// 9. Session setup
+app_start_session();
+app_enforce_session_timeout();
 $isSecure = app_is_https();
-session_set_cookie_params([
-    'lifetime' => 7200,
-    'path'     => '/',
-    'domain'   => '',
-    'secure'   => $isSecure,
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
-session_start();
 
 // Ensure db.php is required for $pdo instance
 require_once __DIR__ . '/db.php';

@@ -13,8 +13,7 @@ ini_set('log_errors', '1');
 // upload_max_filesize controlled by docker/php.ini
 // post_max_size controlled by docker/php.ini
 ini_set('max_input_time', '300');
-ini_set('max_execution_time', '300');
-set_time_limit(300);
+$operationStartedAt = microtime(true);
 
 register_shutdown_function(static function (): void {
     $lastError = error_get_last();
@@ -24,7 +23,7 @@ register_shutdown_function(static function (): void {
         return;
     }
 
-    error_log('Encode fatal error: ' . $lastError['message']);
+    error_log('Encode fatal error: processing failed');
     while (ob_get_level() > 0) {
         @ob_end_clean();
     }
@@ -46,6 +45,9 @@ ob_start();
 try {
 
     require_once __DIR__ . '/app_config.php';
+    $encodeMaxSeconds = app_encode_max_seconds();
+    ini_set('max_execution_time', (string) $encodeMaxSeconds);
+    set_time_limit($encodeMaxSeconds);
     require_once 'crypto.php';
     require_once 'prng.php';
     require_once 'payload.php';
@@ -53,8 +55,9 @@ try {
 
     // Session Start
     if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+        app_start_session();
     }
+    app_enforce_session_timeout(true, true);
 
     // Discard any stray output from includes before we send headers
     if (ob_get_level()) {
@@ -65,22 +68,14 @@ try {
     // 1. Session Check (Login Required + idle timeout)
     if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
         http_response_code(403);
-        exit("Access Denied: You must be logged in.");
+        exit("Your session expired, please log in again.");
     }
 
     // Enforce 2-hour server-side idle timeout
-    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 7200)) {
-        session_unset();
-        session_destroy();
-        http_response_code(401);
-        exit("Session expired. Please log in again.");
-    }
-    $_SESSION['last_activity'] = time(); // Rolling update
-
     // 2. HTTP Method Check
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
-        exit("Method Not Allowed");
+        exit("This action is not available for this request.");
     }
 
     // 3. CSRF Check — null-coalescing prevents TypeError on missing session key
@@ -88,7 +83,7 @@ try {
     $postCsrf = $_POST['csrf_token'] ?? '';
     if (empty($postCsrf) || !hash_equals($sessionCsrf, $postCsrf)) {
         http_response_code(403);
-        exit("Invalid CSRF Token");
+        exit("Your session expired or the page was open too long. Please reload the page and try again.");
     }
 
     // 4. Input Validation
@@ -194,14 +189,8 @@ try {
     $height = $imgDims[1];
     $totalPixels = $width * $height;
 
-    // Header: 33 bytes × 8 bits, stored LSB1 (3 bits/pixel)
-    $headerPixels = (int) ceil((33 * 8) / 3);                          // = 88
-
-    // Body: (compressed plaintext + AES tag) × 8 bits, stored at lsbMode bits/channel
-    $bodyBytes = strlen($plaintext) + 16; // +16 for GCM auth tag (plaintext is now compressed)
-    $bodyPixels = (int) ceil(($bodyBytes * 8) / (3 * $lsbMode));
-
-    if (($headerPixels + $bodyPixels) > $totalPixels) {
+    $capacityBytes = app_payload_capacity_bytes($width, $height, $lsbMode);
+    if (strlen($plaintext) > $capacityBytes) {
         $msg = "Image is too small for this data.";
         $msg .= ($lsbMode === 1)
             ? " Try switching to 'Storing in My Device' mode or use a larger image."
@@ -226,6 +215,15 @@ try {
     if (empty($stegoImageData)) {
         throw new RuntimeException("Embedding failed: produced empty output.");
     }
+
+    error_log(sprintf(
+        'Encode complete: pixels=%d lsb=%d payload_bytes=%d elapsed_seconds=%.3f peak_memory_mb=%.2f',
+        $totalPixels,
+        $lsbMode,
+        strlen($payload),
+        microtime(true) - $operationStartedAt,
+        memory_get_peak_usage(true) / 1048576
+    ));
 
     // 9. Log to activity table (non-fatal — must not block PNG output)
     try {

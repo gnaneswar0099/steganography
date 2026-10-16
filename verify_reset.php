@@ -9,18 +9,10 @@ header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; script-src 'self'");
 
-// SESSION TIMEOUT EXTENSION (2 Hours)
-ini_set('session.gc_maxlifetime', '7200');
+// Session setup
+app_start_session();
+app_enforce_session_timeout();
 $isSecure = app_is_https();
-session_set_cookie_params([
-    'lifetime' => 7200,
-    'path'     => '/',
-    'domain'   => '',
-    'secure'   => $isSecure,
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
-session_start();
 
 require_once __DIR__ . '/db.php';
 
@@ -69,7 +61,7 @@ try {
         !hash_equals($resetRow['request_ip'] ?? 'UNKNOWN', $current_ip) ||
         !hash_equals($resetRow['user_agent'] ?? 'UNKNOWN', $current_ua)
     ) {
-        error_log("Password reset metadata mismatch for token hash: " . $token_hash);
+        error_log("Password reset metadata mismatch");
     }
 
     // RATE LIMITING AGAINST BRUTE FORCE
@@ -132,9 +124,16 @@ try {
                     $stmt = $pdo->prepare("UPDATE users SET password_hash = ?, email_verified = 1 WHERE email = ?");
                     $stmt->execute([$new_password_hash, $email]);
 
-                    // Prevent replay
-                    $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE email = ? AND token_hash = ?");
-                    $stmt->execute([$email, $token_hash]);
+                    // Prevent replay; only the first request can consume the token.
+                    $stmt = $pdo->prepare(
+                        "UPDATE password_resets
+                         SET used = 1
+                         WHERE token_hash = ? AND used = 0 AND expires_at > NOW()"
+                    );
+                    $stmt->execute([$token_hash]);
+                    if ($stmt->rowCount() !== 1) {
+                        throw new RuntimeException("Security Error: Invalid or expired password reset token.");
+                    }
 
                     $pdo->commit();
 

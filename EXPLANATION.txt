@@ -488,7 +488,8 @@ or MySQL CLI before first use.
     Applies Fisher-Yates partial shuffle on the first $needed elements.
     Each swap position is chosen via prng_int(seed, counter, remaining_range).
 
-    SplFixedArray is used instead of PHP array for ~4x memory savings.
+    Pixel indexes are stored as packed 4-byte values instead of PHP array
+    entries, while preserving the original Fisher-Yates selection order.
     For a 1920×1080 image (2,073,600 pixels), an int array would be ~64MB.
     SplFixedArray uses ~8MB for the same data.
 
@@ -648,7 +649,7 @@ or MySQL CLI before first use.
 
   Mirror image of process_encode.php. Returns ZIP binary or plain text error.
 
-  PHP settings: same as encode (512M memory, 180s time limit, ob_start).
+  PHP settings: same as encode (320M memory, 180s time limit, ob_start).
 
   STEP-BY-STEP FLOW:
   ──────────────────
@@ -1302,7 +1303,13 @@ or MySQL CLI before first use.
   5. MAX FILES = 15 per encode operation.
      If you need more, ZIP them first, then upload the single ZIP.
 
-  5. SAME PASSWORD FOR ENCODE AND DECODE:
+  6. EFFECTIVE CAPACITY:
+     The physical capacity is calculated from the 88-pixel header, the selected
+     LSB mode, and the 16-byte GCM tag. The actual server check applies to the
+     ZIP/zlib-compressed payload, while PAYLOAD_MAX_KB remains a raw-upload
+     ceiling. ENCODE_MAX_SECONDS defaults to 100 seconds.
+
+  7. SAME PASSWORD FOR ENCODE AND DECODE:
      The PRNG seed and AES key are both derived from the password + embedded salt.
      You MUST use the exact same password for decoding that was used for encoding.
      There is no recovery mechanism if the password is forgotten.

@@ -285,6 +285,9 @@ steganography/
 ### Resource Limits (Render Free Tier / 512 MB RAM)
 - **Cover Image Limit**: Max 20 MB; resolution capped at `MAX_IMAGE_PIXELS` (default 9,000,000 pixels, ~3000x3000).
 - **Secret Payload Limit**: Max 200 KB of raw uploaded secret files (configurable via `PAYLOAD_MAX_KB`, default 200); files are then ZIPed and zlib-compressed before encryption and capacity checking.
+- **Effective Capacity**: The encode page shows the cover's calculated compressed-payload capacity, the raw-upload server cap, and the lower advisory "Usable now" value. The server remains authoritative because ZIP/zlib compression varies by file contents.
+- **Encode CPU Guard**: `ENCODE_MAX_SECONDS` defaults to 100 seconds. Encode/decode operations log only safe aggregate metrics (pixel count, LSB mode, payload bytes, elapsed time, and peak memory).
+- **Session Lifetime**: `SESSION_IDLE_MINUTES` defaults to 30 minutes and `SESSION_ABSOLUTE_HOURS` defaults to 8 hours. Session cookies are browser-session cookies with Secure, HttpOnly, and SameSite=Strict flags.
 - **PHP Memory Limit**: `320M` (configured in `docker/php.ini`).
 
 ### Target Infrastructure (Production)

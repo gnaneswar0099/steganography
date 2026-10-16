@@ -8,18 +8,9 @@ header('Content-Type: text/html; charset=UTF-8');
 
 // Start session
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.gc_maxlifetime', '7200');
-    $isSecure = app_is_https();
-    session_set_cookie_params([
-        'lifetime' => 7200,
-        'path'     => '/',
-        'domain'   => '',
-        'secure'   => $isSecure,
-        'httponly' => true,
-        'samesite' => 'Strict'
-    ]);
-    session_start();
+    app_start_session();
 }
+app_enforce_session_timeout();
 
 require_once 'db.php';
 
@@ -34,6 +25,10 @@ $emailVerificationRequired = app_email_verification_required();
 
 if (isset($_GET['reset']) && $_GET['reset'] === '1') {
     $success_msg = "Password updated successfully. Access system with new credentials.";
+}
+
+if (isset($_GET['session_expired']) && $_GET['session_expired'] === '1') {
+    $success_msg = "Your session expired, please log in again.";
 }
 
 if (isset($_GET['verified']) && $_GET['verified'] === '1') {
@@ -118,7 +113,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                         $_SESSION['user_id']       = $user['id'];
                         $_SESSION['username']      = $user['username'];
+                        $_SESSION['login_at']      = time();
                         $_SESSION['last_activity'] = time();
+                        $_SESSION['csrf_token']    = bin2hex(random_bytes(32));
 
                         header("Location: home.php");
                         exit;

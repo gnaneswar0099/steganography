@@ -32,7 +32,7 @@ header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:
         <div class="auth-error-msg" style="margin: 30px 0; padding: 20px; border-color: rgba(255, 68, 68, 0.5); background: rgba(255, 68, 68, 0.05);">
             <p style="font-size: 1.1rem; line-height: 1.5; color: #fff;">
                 <i class="fa-solid fa-clock-rotate-left" style="font-size: 2rem; display: block; margin-bottom: 15px; color: #ff4444;"></i>
-                Your security session has timed out or was interrupted. To protect your data, the system requires a fresh handshake.
+                Your session expired or the page was open too long. Please reload the page and try again.
             </p>
         </div>
 
