@@ -136,16 +136,6 @@ try {
         throw new RuntimeException("Too many files. Max 15 allowed.");
     }
 
-    $maxPayloadKb = app_payload_max_kb();
-    $maxPayloadBytes = $maxPayloadKb * 1024;
-    $totalSize = 0;
-    foreach ($files['size'] as $s) {
-        $totalSize += (int) $s;
-    }
-    if ($totalSize > $maxPayloadBytes) {
-        throw new RuntimeException("Total secret size is limited to {$maxPayloadKb} KB on this demo.");
-    }
-
     // Create a temporary zip file
     $tempZipPath = tempnam(sys_get_temp_dir(), 'stegzip');
     $zip = new ZipArchive();

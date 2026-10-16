@@ -21,7 +21,6 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION['csrf_token'];
-$payloadMaxKb = app_payload_max_kb();
 $maxImagePixels = app_max_image_pixels();
 $maxCoverBytes = 20 * 1024 * 1024;
 $maxSecretFiles = 15;
@@ -98,7 +97,6 @@ $maxSecretFiles = 15;
         const MAX_COVER_BYTES = <?= json_encode($maxCoverBytes) ?>;
         const MAX_IMAGE_PIXELS = <?= json_encode($maxImagePixels) ?>;
         const MAX_SECRET_FILES = <?= json_encode($maxSecretFiles) ?>;
-        const MAX_PAYLOAD_BYTES = <?= json_encode($payloadMaxKb * 1024) ?>;
         const CAPACITY_HEADER_PIXELS = <?= json_encode(88) ?>;
         const CAPACITY_GCM_TAG_BYTES = <?= json_encode(16) ?>;
 
@@ -203,9 +201,6 @@ $maxSecretFiles = 15;
                     <form class="form-container encode-form">
                         <input type="hidden" name="csrf_token" value="${CSRF_TOKEN}">
                         <h2>Encode Image</h2>
-                        <p style="margin: 0 0 18px; color: rgba(0, 255, 255, 0.72); font-size: 0.9rem; line-height: 1.5;">Limits: cover file up to <?= number_format($maxCoverBytes / 1024 / 1024, 0) ?> MB, cover images up to <?= number_format($maxImagePixels) ?> pixels, and up to <?= $maxSecretFiles ?> secret files totaling <?= $payloadMaxKb ?> KB.</p>
-                        <p style="margin: 0 0 18px; color: rgba(255, 255, 255, 0.58); font-size: 0.82rem; line-height: 1.5;">The selected files are zipped and zlib-compressed before encryption. Capacity is estimated from the compressed payload, while the <?= $payloadMaxKb ?> KB server cap is measured against the raw uploaded secret files before ZIP compression.</p>
-                        
                         <div class="input-group" id="group-cover">
                             <label>Upload Cover Image (Image to hide data in)</label>
                             <input type="file" name="cover_image" id="input-cover" accept="image/png, image/jpeg, image/jpg" required>
@@ -227,16 +222,8 @@ $maxSecretFiles = 15;
                                 <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Cover Capacity</span>
                                 <span id="capacity-value" style="color: #00ffff; font-weight: bold; font-size:0.88em;"></span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Server Cap</span>
-                                <span id="server-capacity-value" style="color: #00ffff; font-weight: bold; font-size:0.88em;"></span>
-                            </div>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Usable Now</span>
-                                <span id="usable-capacity-value" style="color: #00ff88; font-weight: bold; font-size:0.88em;"></span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Raw Selected Size (Advisory)</span>
+                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Selected Secret Size</span>
                                 <span id="usage-value" style="color: #00ff88; font-weight: bold; font-size:0.88em;"></span>
                             </div>
 
@@ -256,7 +243,7 @@ $maxSecretFiles = 15;
                         </div>
 
                         <div class="input-group" id="group-secret" style="margin-bottom: 15px;">
-                            <label>Secret Data (File to hide) <span style="font-size: 0.85em; color: rgba(0, 255, 255, 0.7);">(Max <?= $payloadMaxKb ?> KB total)</span></label>
+                            <label>Secret Data (Files to hide)</label>
                             <input type="file" name="secret_file" id="input-secret" multiple>
 
                             <div class="preview-container" id="preview-secret" style="display: none;">
@@ -366,19 +353,13 @@ $maxSecretFiles = 15;
 
             if (input.id === 'input-secret') {
                 let currentCount = secretFilesArray.length;
-                let currentTotal = secretFilesArray.reduce((total, file) => total + file.size, 0);
                 let added = 0;
                 for (let i = 0; i < files.length; i++) {
                     if (currentCount + added >= MAX_SECRET_FILES) {
                         showToast(`Maximum of ${MAX_SECRET_FILES} secret files reached. Some files were not added.`);
                         break;
                     }
-                    if (currentTotal + files[i].size > MAX_PAYLOAD_BYTES) {
-                        showToast(`Secret files cannot exceed ${formatBytes(MAX_PAYLOAD_BYTES)} total.`);
-                        break;
-                    }
                     secretFilesArray.push(files[i]);
-                    currentTotal += files[i].size;
                     added++;
                 }
                 updateSecretFilesPreview(previewId, groupId, input);
@@ -579,10 +560,7 @@ $maxSecretFiles = 15;
 
             if (maxCapacity < 0) maxCapacity = 0;
 
-            const usableCapacity = Math.min(maxCapacity, MAX_PAYLOAD_BYTES);
             document.getElementById('capacity-value').textContent = formatBytes(maxCapacity);
-            document.getElementById('server-capacity-value').textContent = formatBytes(MAX_PAYLOAD_BYTES);
-            document.getElementById('usable-capacity-value').textContent = formatBytes(usableCapacity);
 
             // Calculate Usage
             let currentUsage = 0;
@@ -597,7 +575,7 @@ $maxSecretFiles = 15;
             const pctEl = document.getElementById('capacity-pct');
             const submitBtn = document.querySelector('.btn-submit');
 
-            const pct = usableCapacity > 0 ? Math.min((currentUsage / usableCapacity) * 100, 100) : (currentUsage > 0 ? 100 : 0);
+            const pct = maxCapacity > 0 ? Math.min((currentUsage / maxCapacity) * 100, 100) : (currentUsage > 0 ? 100 : 0);
             const displayPct = Math.round(pct);
 
             if (barEl) {
@@ -798,12 +776,6 @@ $maxSecretFiles = 15;
 
             if (secretFilesArray.length > 15) {
                 showToast("You can only hide a maximum of 15 secret files at once. Please remove some files.");
-                return;
-            }
-
-            const totalSecretBytes = secretFilesArray.reduce((acc, f) => acc + (f.size || 0), 0);
-            if (totalSecretBytes > MAX_PAYLOAD_BYTES) {
-                showToast(`Total secret size is limited to ${formatBytes(MAX_PAYLOAD_BYTES)}.`);
                 return;
             }
 

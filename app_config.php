@@ -49,12 +49,6 @@ function app_max_image_pixels(): int
     return max(100000, (int) $val);
 }
 
-function app_payload_max_kb(): int
-{
-    $val = app_env('PAYLOAD_MAX_KB', app_runtime_env(), '200');
-    return max(1, (int) $val);
-}
-
 function app_encode_max_seconds(): int
 {
     $val = app_env('ENCODE_MAX_SECONDS', app_runtime_env(), '100');

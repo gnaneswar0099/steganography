@@ -597,8 +597,7 @@ or MySQL CLI before first use.
 
   8. SECRET FILES:
      $_FILES['secret_files'] must exist.
-     Max 15 files. Max total raw upload size 200 KB by default
-     (configurable via PAYLOAD_MAX_KB).
+     Max 15 files. The compressed payload must fit the selected cover image.
      All files are added to a temporary ZipArchive:
        basename($files['name'][$i]) → sanitized with preg_replace('/[^a-zA-Z0-9._-]/', '_', $name)
        zip->addFile($tmpPath, $safeName)
@@ -930,8 +929,8 @@ or MySQL CLI before first use.
         Bar color: green(<60%) → yellow(60-80%) → orange(80-100%) → red(100%).
         Capacity is advisory because compression varies by file type; the server
         performs the authoritative compressed-payload capacity check.
-      - Secret files upload (multiple, any type, max 15 files, max 200 KB raw
-        total by default, configurable via PAYLOAD_MAX_KB).
+      - Secret files upload (multiple, any type, max 15 files, limited by the
+        selected cover image's compressed payload capacity).
         Files accumulate in JS array `secretFilesArray` until submit.
         Each file shows name, size, individual remove button.
       - LSB mode radio buttons: "Sharing Image" (LSB-1) vs "Storing in My Device" (LSB-2).
@@ -1157,7 +1156,7 @@ or MySQL CLI before first use.
   Weak Passwords           8+ chars, upper + lower + digit + special required
   Auth Tag Tampering       AES-256-GCM 16-byte tag detects ANY ciphertext change
   Memory Exhaustion (GD)   320M limit; 20MB cover image cap; MAX_IMAGE_PIXELS cap
-  Zip Bomb / Large Files   15-file limit; PAYLOAD_MAX_KB raw secret-file cap
+  Zip Bomb / Large Files   15-file limit; image capacity check after compression
   DoS via Slow PBKDF2      Images validated for capacity BEFORE expensive KDF
 
 
@@ -1291,8 +1290,8 @@ or MySQL CLI before first use.
      because JPEG's lossy compression destroys LSB data. If you share the stego
      image and a platform recompresses it as JPEG, the hidden data IS LOST.
 
-  2. MAX SECRET SIZE = PAYLOAD_MAX_KB (200 KB by default), measured against
-     the raw uploaded files before ZIP and zlib compression.
+  2. MAX SECRET SIZE = COVER CAPACITY, measured against the ZIP/zlib-compressed
+     payload after the selected files are archived and compressed.
 
   3. MAX COVER IMAGE = 20 MB file size.
      A 20 MB JPEG typically corresponds to a resolution well over 20 megapixels.
@@ -1306,8 +1305,7 @@ or MySQL CLI before first use.
   6. EFFECTIVE CAPACITY:
      The physical capacity is calculated from the 88-pixel header, the selected
      LSB mode, and the 16-byte GCM tag. The actual server check applies to the
-     ZIP/zlib-compressed payload, while PAYLOAD_MAX_KB remains a raw-upload
-     ceiling. ENCODE_MAX_SECONDS defaults to 100 seconds.
+     ZIP/zlib-compressed payload. ENCODE_MAX_SECONDS defaults to 100 seconds.
 
   7. SAME PASSWORD FOR ENCODE AND DECODE:
      The PRNG seed and AES key are both derived from the password + embedded salt.
