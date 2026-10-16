@@ -596,7 +596,8 @@ or MySQL CLI before first use.
 
   8. SECRET FILES:
      $_FILES['secret_files'] must exist.
-     Max 15 files. Max total size 10 MB.
+     Max 15 files. Max total raw upload size 200 KB by default
+     (configurable via PAYLOAD_MAX_KB).
      All files are added to a temporary ZipArchive:
        basename($files['name'][$i]) → sanitized with preg_replace('/[^a-zA-Z0-9._-]/', '_', $name)
        zip->addFile($tmpPath, $safeName)
@@ -658,7 +659,7 @@ or MySQL CLI before first use.
 
   5. STEGO IMAGE VALIDATION:
      $_FILES['stego_image'] must upload correctly.
-     Max 10 MB (stego images only carry encode output, naturally smaller).
+     Max 20 MB (matching the configured upload limit).
      Must be IMAGETYPE_PNG. (JPEG cannot be decoded — lossy compression destroys bits.)
 
   6. PASSWORD: Must be non-empty.
@@ -671,7 +672,7 @@ or MySQL CLI before first use.
 
   8. SANITY CHECKS (before expensive PBKDF2 computation):
      $header['lsb'] must be 1 or 2.
-     $header['len'] must be > 0 and ≤ 10 MB.
+     $header['len'] must be at least 10 bytes and ≤ 20 MB.
      These catch obviously corrupted images without PBKDF2 overhead.
 
   9. KEY DERIVATION:
@@ -923,10 +924,13 @@ or MySQL CLI before first use.
     Encode form:
       - Cover image upload (PNG/JPEG) with drag-and-drop support.
       - Capacity display panel: updates in real-time as files are selected.
-        Shows max capacity (pixels × LSB mode), current usage, progress bar.
+        Shows estimated compressed capacity (pixels × LSB mode), raw selected
+        usage as an advisory, and a progress bar.
         Bar color: green(<60%) → yellow(60-80%) → orange(80-100%) → red(100%).
-        Submit disabled if data > capacity.
-      - Secret files upload (multiple, any type, max 15 files, max 10 MB total).
+        Capacity is advisory because compression varies by file type; the server
+        performs the authoritative compressed-payload capacity check.
+      - Secret files upload (multiple, any type, max 15 files, max 200 KB raw
+        total by default, configurable via PAYLOAD_MAX_KB).
         Files accumulate in JS array `secretFilesArray` until submit.
         Each file shows name, size, individual remove button.
       - LSB mode radio buttons: "Sharing Image" (LSB-1) vs "Storing in My Device" (LSB-2).
@@ -1151,8 +1155,8 @@ or MySQL CLI before first use.
                            confirm payload exists ("plausible deniability")
   Weak Passwords           8+ chars, upper + lower + digit + special required
   Auth Tag Tampering       AES-256-GCM 16-byte tag detects ANY ciphertext change
-  Memory Exhaustion (GD)   512M limit; 20MB cover image cap; 10MB secret cap
-  Zip Bomb / Large Files   15-file limit, 10 MB total secret files limit
+  Memory Exhaustion (GD)   320M limit; 20MB cover image cap; MAX_IMAGE_PIXELS cap
+  Zip Bomb / Large Files   15-file limit; PAYLOAD_MAX_KB raw secret-file cap
   DoS via Slow PBKDF2      Images validated for capacity BEFORE expensive KDF
 
 
@@ -1286,14 +1290,16 @@ or MySQL CLI before first use.
      because JPEG's lossy compression destroys LSB data. If you share the stego
      image and a platform recompresses it as JPEG, the hidden data IS LOST.
 
-  2. MAX SECRET SIZE = 10 MB (total of all files combined).
-     This is enforced both server-side (process_encode.php) and client-side
-     (updateCapacityDisplay warns when limit is approached).
+  2. MAX SECRET SIZE = PAYLOAD_MAX_KB (200 KB by default), measured against
+     the raw uploaded files before ZIP and zlib compression.
 
   3. MAX COVER IMAGE = 20 MB file size.
      A 20 MB JPEG typically corresponds to a resolution well over 20 megapixels.
 
-  4. MAX FILES = 15 per encode operation.
+  4. MAX IMAGE PIXELS = MAX_IMAGE_PIXELS (9,000,000 by default) for cover and
+     stego images.
+
+  5. MAX FILES = 15 per encode operation.
      If you need more, ZIP them first, then upload the single ZIP.
 
   5. SAME PASSWORD FOR ENCODE AND DECODE:

@@ -284,7 +284,7 @@ steganography/
 
 ### Resource Limits (Render Free Tier / 512 MB RAM)
 - **Cover Image Limit**: Max 20 MB; resolution capped at `MAX_IMAGE_PIXELS` (default 9,000,000 pixels, ~3000x3000).
-- **Secret Payload Limit**: Max 200 KB total secret data (configurable via `PAYLOAD_MAX_KB`, default 200) to keep 9 MP encode/decode memory usage below the 300 MB target.
+- **Secret Payload Limit**: Max 200 KB of raw uploaded secret files (configurable via `PAYLOAD_MAX_KB`, default 200); files are then ZIPed and zlib-compressed before encryption and capacity checking.
 - **PHP Memory Limit**: `320M` (configured in `docker/php.ini`).
 
 ### Target Infrastructure (Production)

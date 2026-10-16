@@ -20,6 +20,7 @@ ob_start();
 // ---------------------------------------------------------------
 try {
 
+    require_once __DIR__ . '/app_config.php';
     require_once 'crypto.php';
     require_once 'prng.php';
     require_once 'payload.php';
@@ -81,6 +82,11 @@ try {
     if ($imageInfo === false || $imageInfo[2] !== IMAGETYPE_PNG) {
         $detected = ($imageInfo !== false) ? image_type_to_mime_type($imageInfo[2]) : 'unknown';
         throw new RuntimeException("Stego image must be a valid PNG file. (Detected: $detected)");
+    }
+    $imagePixels = (int) $imageInfo[0] * (int) $imageInfo[1];
+    $maxImagePixels = app_max_image_pixels();
+    if ($imagePixels > $maxImagePixels) {
+        throw new RuntimeException("Stego image dimensions exceed the {$maxImagePixels}-pixel limit.");
     }
 
     $stegoOriginalName = mb_substr(basename($_FILES['stego_image']['name'] ?? 'unknown'), 0, 255);

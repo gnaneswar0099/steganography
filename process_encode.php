@@ -105,6 +105,11 @@ try {
         $detected = ($imageInfo !== false) ? image_type_to_mime_type($imageInfo[2]) : 'unknown';
         throw new RuntimeException("Cover image must be PNG or JPEG. (Detected: $detected)");
     }
+    $imagePixels = (int) $imageInfo[0] * (int) $imageInfo[1];
+    $maxImagePixels = app_max_image_pixels();
+    if ($imagePixels > $maxImagePixels) {
+        throw new RuntimeException("Cover image dimensions exceed the {$maxImagePixels}-pixel limit.");
+    }
 
     // Limit cover image to 20 MB to prevent memory exhaustion during GD processing
     if ($_FILES['cover_image']['size'] > 20 * 1024 * 1024) {

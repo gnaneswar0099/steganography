@@ -44,6 +44,8 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf_token = $_SESSION['csrf_token'];
 $payloadMaxKb = app_payload_max_kb();
 $maxImagePixels = app_max_image_pixels();
+$maxCoverBytes = 20 * 1024 * 1024;
+$maxSecretFiles = 15;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -114,6 +116,10 @@ $maxImagePixels = app_max_image_pixels();
         // Pass PHP session status to JS
         const IS_LOGGED_IN = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
         const CSRF_TOKEN = "<?php echo $csrf_token; ?>";
+        const MAX_COVER_BYTES = <?= json_encode($maxCoverBytes) ?>;
+        const MAX_IMAGE_PIXELS = <?= json_encode($maxImagePixels) ?>;
+        const MAX_SECRET_FILES = <?= json_encode($maxSecretFiles) ?>;
+        const MAX_PAYLOAD_BYTES = <?= json_encode($payloadMaxKb * 1024) ?>;
 
         function showLoader(mode) {
             const overlay = document.getElementById('processingOverlay');
@@ -216,7 +222,8 @@ $maxImagePixels = app_max_image_pixels();
                     <form class="form-container encode-form">
                         <input type="hidden" name="csrf_token" value="${CSRF_TOKEN}">
                         <h2>Encode Image</h2>
-                        <p style="margin: 0 0 18px; color: rgba(0, 255, 255, 0.72); font-size: 0.9rem; line-height: 1.5;">Limits: secret files total <?= $payloadMaxKb ?> KB; cover images up to <?= number_format($maxImagePixels) ?> pixels.</p>
+                        <p style="margin: 0 0 18px; color: rgba(0, 255, 255, 0.72); font-size: 0.9rem; line-height: 1.5;">Limits: cover file up to <?= number_format($maxCoverBytes / 1024 / 1024, 0) ?> MB, cover images up to <?= number_format($maxImagePixels) ?> pixels, and up to <?= $maxSecretFiles ?> secret files totaling <?= $payloadMaxKb ?> KB.</p>
+                        <p style="margin: 0 0 18px; color: rgba(255, 255, 255, 0.58); font-size: 0.82rem; line-height: 1.5;">The selected files are zipped and zlib-compressed before encryption. Capacity is estimated from the compressed payload, while the <?= $payloadMaxKb ?> KB server cap is measured against the raw uploaded secret files before ZIP compression.</p>
                         
                         <div class="input-group" id="group-cover">
                             <label>Upload Cover Image (Image to hide data in)</label>
@@ -236,11 +243,11 @@ $maxImagePixels = app_max_image_pixels();
                         <!-- Capacity Display -->
                         <div id="capacity-display" style="display:none; margin-bottom: 20px; padding: 14px 16px; border-radius: 10px; background: rgba(0, 255, 255, 0.04); border: 1px solid rgba(0, 255, 255, 0.2);">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Payload Capacity</span>
+                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Estimated Compressed Capacity</span>
                                 <span id="capacity-value" style="color: #00ffff; font-weight: bold; font-size:0.88em;"></span>
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Current Usage</span>
+                                <span style="color: #ccc; font-size:0.88em; letter-spacing:1px; text-transform:uppercase;">Raw Selected Size (Advisory)</span>
                                 <span id="usage-value" style="color: #00ff88; font-weight: bold; font-size:0.88em;"></span>
                             </div>
 
@@ -254,8 +261,8 @@ $maxImagePixels = app_max_image_pixels();
                                 <span>100%</span>
                             </div>
 
-                            <div id="capacity-warning" style="display:none; color: #ff4444; font-size: 0.85em; margin-top: 4px; padding: 6px 10px; background: rgba(255,68,68,0.08); border-radius:6px; border:1px solid rgba(255,68,68,0.3);">
-                                <i class="fa-solid fa-triangle-exclamation"></i>&nbsp;Data exceeds image capacity! Remove some files or use a larger image.
+                            <div style="color: rgba(255, 255, 255, 0.58); font-size: 0.78em; margin-top: 8px;">
+                                Capacity is advisory because compression varies by file type. The server performs the final compressed-payload capacity check.
                             </div>
                         </div>
 
@@ -360,101 +367,6 @@ $maxImagePixels = app_max_image_pixels();
             }
         }
 
-        // ════════════════════════════════════════════════════════════════════════════════
-        // GOAL: Guarantee the stego OUTPUT PNG is always < 900KB, even at 100% capacity.
-        //
-        // WHY PIXEL COUNT (not file size):
-        //   Stego output size ≈ W × H × 3 × 0.95 bytes (worst case: all LSBs filled
-        //   with encrypted noise, which compresses poorly).
-        //   For 300,000 pixels: 300,000 × 3 × 0.95 = 855KB < 900KB ✓
-        //   File size alone is unreliable — a solid-color 800KB PNG can be huge in pixels.
-        //
-        // RESULT: After encode, the stego image the user downloads is always < 900KB.
-        //         When they later upload it to decode, it's always under the 1MB nginx limit.
-        const MAX_COVER_PIXELS = 300000; // Guarantees stego output < 900KB worst-case
-
-        function compressImageBeforeUpload(file, input, previewId, groupId) {
-            const isJPEG = file.type === 'image/jpeg';
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = new Image();
-                img.onload = function () {
-                    let width  = img.width;
-                    let height = img.height;
-                    const originalPixels = width * height;
-
-                    // Scale DOWN proportionally to fit within MAX_COVER_PIXELS
-                    if (originalPixels > MAX_COVER_PIXELS) {
-                        const scale = Math.sqrt(MAX_COVER_PIXELS / originalPixels);
-                        width  = Math.floor(width  * scale);
-                        height = Math.floor(height * scale);
-                        showToast(`Resizing to ${width}×${height}px to keep stego output under 1MB...`, 'info');
-                    }
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width  = width;
-                    canvas.height = height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-
-                    // PNG stays PNG (lossless — better quality for cover images).
-                    // JPEG stays JPEG (PHP reads pixel values anyway, stego output is always PNG).
-                    const mimeType = isJPEG ? 'image/jpeg' : 'image/png';
-                    const quality  = isJPEG ? 0.85 : 1.0;
-
-                    canvas.toBlob(function (blob) {
-                        const cleanName = file.name.replace(/\.[^.]+$/, '') || 'cover_image';
-                        const ext = isJPEG ? '.jpg' : '.png';
-                        const compressedFile = new File([blob], cleanName + ext, { type: mimeType });
-
-                        // Replace the file input
-                        const dt = new DataTransfer();
-                        dt.items.add(compressedFile);
-                        input.files = dt.files;
-
-                        const wasResized = originalPixels > MAX_COVER_PIXELS;
-                        if (wasResized) {
-                            showToast(
-                                `✓ Cover ready: ${formatBytes(file.size)} → ${formatBytes(blob.size)} | ${width}×${height}px (stego output will be < 900KB)`,
-                                'success'
-                            );
-                        }
-
-                        // Update preview UI
-                        const fileSizeEl = document.querySelector(`#${previewId} .file-size`);
-                        const fileNameEl = document.querySelector(`#${previewId} .file-name`);
-                        const dimsEl     = document.querySelector(`#${previewId} .file-dims`);
-                        const imgEl      = document.querySelector(`#${previewId} img`);
-
-                        if (fileSizeEl) fileSizeEl.textContent = formatBytes(blob.size);
-                        if (fileNameEl) fileNameEl.textContent = compressedFile.name;
-
-                        const previewReader = new FileReader();
-                        previewReader.onload = (ev) => {
-                            if (imgEl) imgEl.src = ev.target.result;
-                            const tempImg = new Image();
-                            tempImg.onload = () => {
-                                currentCoverImageWidth  = tempImg.width;
-                                currentCoverImageHeight = tempImg.height;
-                                if (dimsEl) dimsEl.textContent = `${tempImg.width} × ${tempImg.height} px`;
-                                updateCapacityDisplay();
-                            };
-                            tempImg.src = ev.target.result;
-                        };
-                        previewReader.readAsDataURL(compressedFile);
-
-                        const previewContainer = document.getElementById(previewId);
-                        const groupContainer   = document.getElementById(groupId);
-                        if (previewContainer) previewContainer.style.display = 'flex';
-                        if (groupContainer)   groupContainer.classList.add('has-file');
-
-                    }, mimeType, quality);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
         function handleFileSelect(input, previewId, groupId) {
             const files = input.files;
             if ((!files || files.length === 0) && input.id !== 'input-secret') return;
@@ -465,13 +377,19 @@ $maxImagePixels = app_max_image_pixels();
 
             if (input.id === 'input-secret') {
                 let currentCount = secretFilesArray.length;
+                let currentTotal = secretFilesArray.reduce((total, file) => total + file.size, 0);
                 let added = 0;
                 for (let i = 0; i < files.length; i++) {
-                    if (currentCount + added >= 15) {
-                        showToast("Maximum of 15 secret files reached. Some files were not added.");
+                    if (currentCount + added >= MAX_SECRET_FILES) {
+                        showToast(`Maximum of ${MAX_SECRET_FILES} secret files reached. Some files were not added.`);
+                        break;
+                    }
+                    if (currentTotal + files[i].size > MAX_PAYLOAD_BYTES) {
+                        showToast(`Secret files cannot exceed ${formatBytes(MAX_PAYLOAD_BYTES)} total.`);
                         break;
                     }
                     secretFilesArray.push(files[i]);
+                    currentTotal += files[i].size;
                     added++;
                 }
                 updateSecretFilesPreview(previewId, groupId, input);
@@ -494,15 +412,13 @@ $maxImagePixels = app_max_image_pixels();
                 nameEl.style.whiteSpace = '';
                 nameEl.style.overflow = '';
 
-                if (file.type.startsWith('image/')) {
-                    // Compress cover images to bypass 1MB Azure nginx limit
-                    // JPEG: converted to smaller JPEG (lossy)
-                    // PNG: scaled down but kept as PNG (lossless - preserves steganography)
-                    if (input.id === 'input-cover') {
-                        compressImageBeforeUpload(file, input, previewId, groupId);
-                        return;
-                    }
+                if (input.id === 'input-cover' && file.size > MAX_COVER_BYTES) {
+                    showToast(`Cover image must be ${formatBytes(MAX_COVER_BYTES)} or smaller.`);
+                    removeFile(input.id, previewId, groupId);
+                    return;
+                }
 
+                if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         if (imgEl.tagName === 'IMG') {
@@ -512,6 +428,11 @@ $maxImagePixels = app_max_image_pixels();
                             if (input.id === 'input-cover') {
                                 const tempImg = new Image();
                                 tempImg.onload = function () {
+                                    if ((this.width * this.height) > MAX_IMAGE_PIXELS) {
+                                        showToast(`Cover image dimensions exceed the ${MAX_IMAGE_PIXELS.toLocaleString()}-pixel limit.`);
+                                        removeFile(input.id, previewId, groupId);
+                                        return;
+                                    }
                                     currentCoverImageWidth = this.width;
                                     currentCoverImageHeight = this.height;
                                     if (dimsEl) dimsEl.textContent = `${this.width} x ${this.height} px`;
@@ -585,6 +506,7 @@ $maxImagePixels = app_max_image_pixels();
                 `;
 
                 item.querySelector('.file-name').textContent = f.name;
+                item.querySelector('.file-name').textContent = f.name;
                 const removeBtn = item.querySelector('.single-remove-btn');
                 removeBtn.onclick = () => removeSingleFile(index, previewId, groupId, inputElement);
 
@@ -653,10 +575,9 @@ $maxImagePixels = app_max_image_pixels();
             // Calculate Capacity
             const totalPixels = currentCoverImageWidth * currentCoverImageHeight;
 
-            // 1. Subtract Header Capacity (33 bytes stored in LSB1)
-            // Header is always LSB1 (3 bits per pixel)
+            // Header: 33 bytes stored in LSB1, requiring exactly 88 pixels.
             const headerBytes = 33;
-            const headerPixels = Math.ceil((headerBytes * 8) / 3); // ~102 pixels
+            const headerPixels = Math.ceil((headerBytes * 8) / 3); // 88 pixels
 
             const availablePixels = totalPixels - headerPixels;
 
@@ -666,7 +587,7 @@ $maxImagePixels = app_max_image_pixels();
                 const maxBodyBits = availablePixels * 3 * lsbMode;
                 const maxBodyBytes = Math.floor(maxBodyBits / 8);
 
-                // 2. Subtract Auth Tag (16 bytes)
+                // The body includes the 16-byte AES-GCM tag.
                 maxCapacity = maxBodyBytes - 16;
             }
 
@@ -685,7 +606,6 @@ $maxImagePixels = app_max_image_pixels();
             // --- Progress Bar ---
             const barEl = document.getElementById('capacity-bar');
             const pctEl = document.getElementById('capacity-pct');
-            const warningEl = document.getElementById('capacity-warning');
             const submitBtn = document.querySelector('.btn-submit');
 
             const pct = maxCapacity > 0 ? Math.min((currentUsage / maxCapacity) * 100, 100) : (currentUsage > 0 ? 100 : 0);
@@ -719,24 +639,12 @@ $maxImagePixels = app_max_image_pixels();
                 pctEl.style.color = pct >= 100 ? '#ff4444' : (pct >= 80 ? '#ffaa00' : 'rgba(0,255,136,0.7)');
             }
 
-            if (currentUsage > maxCapacity && maxCapacity > 0) {
-                document.getElementById('usage-value').style.color = '#ff4444';
-                if (warningEl) warningEl.style.display = 'block';
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.style.opacity = '0.45';
-                    submitBtn.style.cursor = 'not-allowed';
-                    submitBtn.title = 'Cannot hide data: payload exceeds image capacity.';
-                }
-            } else {
-                document.getElementById('usage-value').style.color = pct >= 80 ? '#ffaa00' : '#00ff88';
-                if (warningEl) warningEl.style.display = 'none';
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '';
-                    submitBtn.style.cursor = '';
-                    submitBtn.title = '';
-                }
+            document.getElementById('usage-value').style.color = pct >= 80 ? '#ffaa00' : '#00ff88';
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+                submitBtn.style.cursor = '';
+                submitBtn.title = '';
             }
         }
 
@@ -905,8 +813,8 @@ $maxImagePixels = app_max_image_pixels();
             }
 
             const totalSecretBytes = secretFilesArray.reduce((acc, f) => acc + (f.size || 0), 0);
-            if (totalSecretBytes > <?= $payloadMaxKb ?> * 1024) {
-                showToast("Total secret size is limited to <?= $payloadMaxKb ?> KB on this demo.");
+            if (totalSecretBytes > MAX_PAYLOAD_BYTES) {
+                showToast(`Total secret size is limited to ${formatBytes(MAX_PAYLOAD_BYTES)}.`);
                 return;
             }
 
