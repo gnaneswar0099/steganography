@@ -101,8 +101,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 if ($user && $isValidPass) {
                     // C6: Check email verification status
                     if ($emailVerificationRequired && (int)($user['email_verified'] ?? 0) !== 1) {
-                        $encodedEmail = urlencode($email);
-                        $errors[] = "Your email address has not been verified yet. Please check your inbox or <a href='resend_verification.php?email={$encodedEmail}' style='color:#00ffff;text-decoration:underline;'>request a new activation link</a>.";
+                        $errors[] = "Your email address has not been verified yet. Please check your inbox or use the link below to request a new activation email.";
+                        $showResendLink = urlencode($email);
                     } else {
                         // SUCCESS
                         $pdo->prepare(
@@ -184,9 +184,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <?php foreach ($errors as $error): ?>
                     <span>
                         <i class="fa-solid fa-triangle-exclamation"></i>
-                        <?= $error ?>
+                        <?= htmlspecialchars($error) ?>
                     </span>
                 <?php endforeach; ?>
+                <?php if (!empty($showResendLink)): ?>
+                    <span>
+                        <i class="fa-solid fa-envelope"></i>
+                        <a href="resend_verification.php?email=<?= htmlspecialchars($showResendLink) ?>" style="color:#00ffff;text-decoration:underline;">Request a new activation link</a>
+                    </span>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 

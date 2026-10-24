@@ -1,7 +1,7 @@
-# Dockerfile for php:8.2-apache
+# Dockerfile for php:8.2-apache (pinned to 8.2.35 for CVE-2026-109618/109619 patches)
 # Targets Render free tier: Apache on port 10000, Aiven MySQL SSL
 
-FROM php:8.2-apache
+FROM php:8.2.35-apache
 
 # System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
