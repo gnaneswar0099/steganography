@@ -1,7 +1,7 @@
-# Dockerfile for php:8.2-apache (pinned to 8.2.35 for CVE-2026-109618/109619 patches)
+# Dockerfile for php:8.5-apache
 # Targets Render free tier: Apache on port 10000, Aiven MySQL SSL
 
-FROM php:8.2.35-apache
+FROM php:8.5-apache
 
 # System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # PHP extensions
-# Note: mbstring, zlib, openssl, and fileinfo are already built into php:8.2-apache base image.
+# Note: In PHP 8.5, OPcache is built into core; mbstring, zlib, openssl, and fileinfo are also built-in.
 RUN docker-php-ext-configure gd \
         --with-freetype \
         --with-jpeg \
@@ -22,8 +22,7 @@ RUN docker-php-ext-configure gd \
         gd \
         pdo_mysql \
         mysqli \
-        zip \
-        opcache
+        zip
 
 # Apache modules
 RUN a2enmod rewrite headers remoteip deflate expires
@@ -43,10 +42,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . /var/www/html/
 
-# Dependencies (must run BEFORE php.ini hardening - open_basedir blocks /usr/bin/composer)
+# Dependencies (must run BEFORE php.ini configuration)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# PHP runtime configuration (applied AFTER composer so open_basedir doesn't block build)
+# PHP runtime configuration (applied AFTER composer install)
 COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
 
 # Permissions
