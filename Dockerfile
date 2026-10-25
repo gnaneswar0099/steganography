@@ -36,17 +36,17 @@ RUN sed -i 's/^Listen 80$/Listen 10000/' /etc/apache2/ports.conf && \
 # Virtual host configuration
 COPY docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
 
-# PHP runtime configuration
-COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
-
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 COPY . /var/www/html/
 
-# Dependencies
+# Dependencies (must run BEFORE php.ini hardening - open_basedir blocks /usr/bin/composer)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# PHP runtime configuration (applied AFTER composer so open_basedir doesn't block build)
+COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
 
 # Permissions
 RUN chown -R www-data:www-data /var/www/html \
