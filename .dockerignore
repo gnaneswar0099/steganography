@@ -1,6 +1,9 @@
 # Version control
+.git
 .git/
 .github/
+.gitignore
+.gitattributes
 
 # Secrets
 .env
@@ -32,3 +35,8 @@ oryx-manifest.toml
 .user.ini
 database_schema.sql
 bin/
+
+# Local XAMPP & logs
+xampp*
+*.log
+error_log

@@ -35,6 +35,7 @@ RUN sed -i 's/^Listen 80$/Listen 10000/' /etc/apache2/ports.conf && \
 
 # Virtual host configuration
 COPY docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's/^ServerTokens .*/ServerTokens Prod/; s/^ServerSignature .*/ServerSignature Off/' /etc/apache2/conf-available/security.conf
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
